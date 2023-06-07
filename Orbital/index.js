@@ -25,19 +25,3 @@ app.use(errorController.get404);
 app.listen(4000, () => {
     console.log("LISTENING ON PORT 4000")
 });
-
-app.get("./", (req, res) => {
-    res.render("test")
-});
-
-app.get("./saved", (req, res) => {
-    res.render("saved")
-});
-
-app.get("./recommendations", (req, res) => {
-    res.render("recommendations")
-});
-
-app.get("./trends", (req, res) => {
-    res.render("trends")
-});
