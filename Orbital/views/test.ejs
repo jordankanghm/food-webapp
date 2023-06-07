@@ -1,0 +1,30 @@
+<%- include('partials/head') %>
+
+<h2 class="header">Welcome <%= user.username %> </h2>
+
+<div class="miscellanous two-column-section">
+    <div class="sidebar">
+        <form action = '/saved' method='POST' class="sidebar-tab">
+            <button> Saved </button>
+        </form>
+        <form action = '/recommendations' method='POST' class="sidebar-tab">
+            <button> Recommendations </button>
+        </form>
+        <form action = '/trends' method='POST' class="sidebar-tab">
+            <button> Trends </button>
+        </form>
+        
+    </div>
+
+    <form class="search-container right-column" id='search-button' action="/" method="POST">
+        <div class="search-bar">
+            <input type="text" name="keyword" class="search-input" id="search-input" placeholder="Search for food places here!!!">
+                <button class="search-button"> click
+                    <!-- <img src="images/magnifying-glass.jpg" alt="magnifying-glass">  -->
+                </button> 
+            <div class="map-background" id="map"> </div>
+        </div>
+    </form>
+</div>
+
+<%- include('partials/footer') %>

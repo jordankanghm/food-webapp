@@ -1,0 +1,75 @@
+<%- include('partials/head') %>
+
+<section class="after-clicking-trends basic-page-layout">
+    <div class="map-background">
+        <span class="label current-location">
+            <img src="images/current-location.jpeg" alt="current-location-icon" class="icon">
+            <span class="place-name">start here</span>
+        </span>
+
+        <span class="label with-text trending" id="trend1">
+            <img src="images/trending-location.png" alt="trending-location-icon" class="icon">
+            <span class="place-name">trending here</span>
+        </span>
+
+        <span class="label with-text trending" id="trend2">
+            <img src="images/trending-location.png" alt="trending-location-icon" class="icon">
+            <span class="place-name">trending here</span>
+        </span>
+
+        <span class="label with-text trending" id="trend3">
+            <img src="images/trending-location.png" alt="trending-location-icon" class="icon">
+            <span class="place-name">trending here</span>
+        </span>
+    </div>
+
+    <div class="miscellanous two-column-section">
+        <div class="sidebar">
+            <button class="sidebar-tab">Saved</button>
+            <button class="sidebar-tab">Recommendations</button>
+            <button class="sidebar-tab active">Trends</button>
+        </div>
+    
+        <div class="trends-section sidebar-tab-column">
+            <h2 class="sidebar-tab-header">Trends</h2>
+            <div class="toggle">
+                <h3 class="heading active">Ongoing Events</h3>
+                <h3 class="heading">Food Trends</h3>
+            </div>
+            <div class="trend-event-card">
+                <div class="place-name">First Place</div>
+                <div class="details">
+                    <div class="distance">4.5km away</div>
+                    <div class="price-range">$$</div>
+                </div>
+                <p>
+                    Lorem ipsum dolor sit amet consectetur adipisicing elit. Eligendi sed deleniti inventore maiores animi, dolorum suscipit iusto odit itaque, sint ipsum possimus reprehenderit pariatur quibusdam molestiae fuga, beatae ut optio.
+                </p>
+            </div>
+
+            <div class="trend-event-card">
+                <div class="place-name">Second Place</div>
+                <div class="details">
+                    <div class="distance">4.0km away</div>
+                    <div class="price-range">$</div>
+                </div>
+                <p>
+                    Lorem ipsum dolor sit amet consectetur adipisicing elit. Eligendi sed deleniti inventore maiores animi, dolorum suscipit iusto odit itaque, sint ipsum possimus reprehenderit pariatur quibusdam molestiae fuga, beatae ut optio.
+                </p>
+            </div>
+
+            <div class="trend-event-card">
+                <div class="place-name">Third Place</div>
+                <div class="details">
+                    <div class="distance">4.2km away</div>
+                    <div class="price-range">$$</div>
+                </div>
+                <p>
+                    Lorem ipsum dolor sit amet consectetur adipisicing elit. Eligendi sed deleniti inventore maiores animi, dolorum suscipit iusto odit itaque, sint ipsum possimus reprehenderit pariatur quibusdam molestiae fuga, beatae ut optio.
+                </p>
+            </div>
+        </div>    
+    </div>
+</section>
+
+<%- include('partials/footer') %>
