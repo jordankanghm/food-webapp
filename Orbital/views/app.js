@@ -79,36 +79,113 @@
 // });
 
 // Search functionalities
-let map, infoWindow;
+let map, currentLocation, bounds, currentInfoWindow;
 let markers = [];
 
-//Initialises the Map
+/**
+ * Initialises the map.
+ *
+ * Links Google Maps search box to the search input element.
+ * The website will ask for user's current location and adjust the map accordingly such that the map
+ * is focussed on the user's current location
+ */
 function initMap() {
+    const singapore = { lat: 1.3521, lng: 103.8198 };
     map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 1.3521, lng: 103.8198 },
+        center: singapore,
         zoom: 11.5,
         mapTypeControl: false,
     });
-    infoWindow = new google.maps.InfoWindow();
 
-    setAutoComplete();
-    setMarkers(map, []);
-    setCurrentLocation();
+    // Create the search box and link it to the input element
+    const searchInput = document.getElementById("pac-input");
+    const searchBox = new google.maps.places.SearchBox(searchInput);
+
+    const searchButton = document.getElementById("search-button");
+    // Adds an event listener such that hitting the search button performs a search
+    searchButton.addEventListener("click", showSearchResults);
+
+    // Adds an event listener such that hitting enter performs a search
+    searchInput.addEventListener("keydown", function (event) {
+        // Check if the Enter key was pressed (key code 13)
+        if (event.key === "Enter") {
+          event.preventDefault(); // Prevent form submission
+          showSearchResults();
+        }
+    });
+
+    setCurrentLocation(3000);
+
+    /**
+     * Sets the map viewport centered around the user's current location.
+     *
+     * Autocomplete suggestions are also restricted according to the radius argument.
+     * 
+     * @param {} radius - The search radius 
+     */
+    function setCurrentLocation(radius) {
+        // Try to retrieve the user's current location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                const { latitude, longitude } = position.coords;
+    
+                // Create a LatLng object with the user's coordinates
+                currentLocation = new google.maps.LatLng(latitude, longitude);
+    
+                //Sets the bounds of the search
+                bounds = new google.maps.Circle({
+                    center: currentLocation,
+                    radius
+                });
+
+                // Calculate the southwest and northeast corners of the square
+                const sw = google.maps.geometry.spherical.computeOffset(currentLocation, radius, 225);
+                const ne = google.maps.geometry.spherical.computeOffset(currentLocation, radius, 45);
+
+                // Create a LatLngBounds object with the southwest and northeast corners
+                const bound = new google.maps.LatLngBounds(sw, ne);
+                //Set the bounds of autocomplete suggestions to the bound
+                searchBox.setBounds(bound);
+    
+                // Place a marker at the user's location on the map
+                new google.maps.Marker({
+                    position: currentLocation,
+                    map,
+                    title: "Your Location",
+                });
+    
+                // Center the map on the user's location
+                map.setCenter(currentLocation);
+            }, error => {
+                    console.error("Error retrieving location:", error);
+                });
+        } else {
+            console.error("Geolocation is not supported by this browser.");
+        }
+    }
 }
 
+/**
+ * Displays markers at locations which match the user's search.
+ *
+ * Removes all current markers. Then searches for all places that match the user's input and the bounds.
+ * Clickable markers are shown at each place which show details about the place.
+ */
 async function showSearchResults() {
-    //Remove all current markers
+    // Remove all current markers
     removeMarkers(map);
 
     // Get the search input
-    const searchInput = document.getElementById('search-input').value;
+    const searchInput = document.getElementById('pac-input').value;
   
     // Create a PlacesService object
     const service = new google.maps.places.PlacesService(document.createElement('div'));
   
     // Define the search request
     const searchRequest = {
-      query: searchInput
+      query: searchInput,
+      //Restricts the search to only food-related places
+      types: ["restaurant", "cafe", "bakery", "bar", "meal_delivery", "meal_takeaway", "grocery_or_supermarket", "convenience_store", "liquor_store"]
     };
   
     try {
@@ -124,138 +201,39 @@ async function showSearchResults() {
       });
   
       let counter = 1;
-      const searchResultsGeometry = results.map(result => {
-        const name = result.name;
-        const lat = result.geometry.location.lat();
-        const long = result.geometry.location.lng();
+      // Initialising the bounds which represents the users' viewport after the search
+      const viewbounds = new google.maps.LatLngBounds();
+      //Set the bounds to include the user's current location
+      viewbounds.extend(currentLocation);
+      const searchResultsInfo = results.filter(result => {
+        const distance = google.maps.geometry.spherical.computeDistanceBetween(bounds.getCenter(), result.geometry.location);
+        return distance <= bounds.getRadius();  // Check if the result is within the bounds
+      }).map(result => {
         const zIndex = counter++;
-        return [name, lat, long, zIndex];
+        // Sets the bounds to include the search result
+        viewbounds.extend(result.geometry.location);
+        return {...result, zIndex};
       });
   
       // Call the setMarkers function to display the markers on the map
-      setMarkers(map, searchResultsGeometry);
+      setMarkers(map, searchResultsInfo);
+      // Finalises the bounds based on all the search results
+      map.fitBounds(viewbounds);
     } catch (error) {
       console.error('Error occurred during search:', error);
     }
 }
-  
-//Allows user searches to have autocomplete options
-function setAutoComplete() {
-    const card = document.getElementById("pac-card");
-    const input = document.getElementById("search-input");
-    const biasInputElement = document.getElementById("use-location-bias");
-    const strictBoundsInputElement =
-    document.getElementById("use-strict-bounds");
-    const options = {
-    fields: ["formatted_address", "geometry", "name"],
-    strictBounds: false,
-    types: ["establishment"],
-    };
 
-    map.controls[google.maps.ControlPosition.TOP_LEFT].push(card);
-
-    const autocomplete = new google.maps.places.Autocomplete(
-    input,
-    options
-    );
-
-    // Bind the map's bounds (viewport) property to the autocomplete object,
-    // so that the autocomplete requests use the current map bounds for the
-    // bounds option in the request.
-    autocomplete.bindTo("bounds", map);
-
-    const infowindow = new google.maps.InfoWindow();
-    const infowindowContent = document.getElementById("infowindow-content");
-
-    infowindow.setContent(infowindowContent);
-
-    const marker = new google.maps.Marker({
-    map,
-    anchorPoint: new google.maps.Point(0, -29),
-    });
-
-    autocomplete.addListener("place_changed", () => {
-    infowindow.close();
-    marker.setVisible(false);
-
-    const place = autocomplete.getPlace();
-
-    if (!place.geometry || !place.geometry.location) {
-        // User entered the name of a Place that was not suggested and
-        // pressed the Enter key, or the Place Details request failed.
-        window.alert(
-        "No details available for input: '" + place.name + "'"
-        );
-        return;
-    }
-
-    // If the place has a geometry, then present it on a map.
-    if (place.geometry.viewport) {
-        map.fitBounds(place.geometry.viewport);
-    } else {
-        map.setCenter(place.geometry.location);
-        map.setZoom(17);
-    }
-
-    marker.setPosition(place.geometry.location);
-    marker.setVisible(true);
-    infowindowContent.children["place-name"].textContent = place.name;
-    infowindowContent.children["place-address"].textContent =
-        place.formatted_address;
-    infowindow.open(map, marker);
-    });
-
-    // Sets a listener on a radio button to change the filter type on Places
-    // Autocomplete.
-    function setupClickListener(id, types) {
-    const radioButton = document.getElementById(id);
-
-    radioButton.addEventListener("click", () => {
-        autocomplete.setTypes(types);
-        input.value = "";
-    });
-    }
-
-    setupClickListener("changetype-all", []);
-    setupClickListener("changetype-address", ["address"]);
-    setupClickListener("changetype-establishment", ["establishment"]);
-    setupClickListener("changetype-geocode", ["geocode"]);
-    setupClickListener("changetype-cities", ["(cities)"]);
-    setupClickListener("changetype-regions", ["(regions)"]);
-    biasInputElement.addEventListener("change", () => {
-    if (biasInputElement.checked) {
-        autocomplete.bindTo("bounds", map);
-    } else {
-        // User wants to turn off location bias, so three things need to happen:
-        // 1. Unbind from map
-        // 2. Reset the bounds to whole world
-        // 3. Uncheck the strict bounds checkbox UI (which also disables strict bounds)
-        autocomplete.unbind("bounds");
-        autocomplete.setBounds({
-        east: 180,
-        west: -180,
-        north: 90,
-        south: -90,
-        });
-        strictBoundsInputElement.checked = biasInputElement.checked;
-    }
-
-    input.value = "";
-    });
-    strictBoundsInputElement.addEventListener("change", () => {
-    autocomplete.setOptions({
-        strictBounds: strictBoundsInputElement.checked,
-    });
-    if (strictBoundsInputElement.checked) {
-        biasInputElement.checked = strictBoundsInputElement.checked;
-        autocomplete.bindTo("bounds", map);
-    }
-
-    input.value = "";
-    });
-}
-
-//Changes the appearance of markers on the Map
+/**
+ * Places a marker at all places in the array.
+ *
+ * Each place in the array is given a marker with a listener which displays information about the place
+ * when clicked.
+ * 
+ * @param {} map - The map being used.
+ * @param {} array - The array containing places. Each element contains information about the place as shown in the DOM
+ *                   and its z-index, to deal with overlapping info windows.
+ */
 function setMarkers(map, array) {
 
     // Adds markers to the map.
@@ -280,72 +258,80 @@ function setMarkers(map, array) {
       type: "poly",
     };
 
-    for (let i = 0; i < array.length; i++) {
-      const result = array[i];
+    array.forEach(result => {
+        // Create a marker
+        const marker = new google.maps.Marker({
+            position: result.geometry.location,
+            map,
+            icon: image,
+            shape: shape,
+            title: result.name,
+            zIndex: result.zIndex,
+        });
 
-      const marker = new google.maps.Marker({
-        position: { lat: result[1], lng: result[2] },
-        map,
-        icon: image,
-        shape: shape,
-        title: result[0],
-        zIndex: result[3],
-      });
+        // Adds the marker to the array of currently displayed markers
+        markers.push(marker);
 
-      markers.push(marker);
-    }
+        const placeRequest = {
+            placeId: result.place_id,
+            // Specifying the place details to retrieve
+            fields: ["name", "formatted_address", "formatted_phone_number", "website", "rating", "opening_hours", "reviews", "photos", "price_level"]
+        };
+  
+        const service = new google.maps.places.PlacesService(map); // Assuming you have a 'map' instance
+        let infoWindow = null;
+
+        // Retrieve additional information about the place using the Places API
+        service.getDetails(placeRequest, (place, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK) {
+                // Create an info window or a custom HTML element to display the place information
+                const infoWindowContent = `
+                <h3>${place.name}</h3>
+                <p>Address: ${place.formatted_address}</p>
+                <p>Phone Number: ${place.formatted_phone_number}</p>
+                <p>Website: <a href="${place.website}" target="_blank">${place.website}</a></p>
+                <p>Rating: ${place.rating}</p>
+                <p>Reviews: ${place.reviews}</p>
+                <p>Opening Hours: ${place.opening_hours}</p>
+                <p>Photos: ${place.photos}</p>
+                <p>Price Level: ${place.price_level}</p>
+                `;
+
+                // Display the place information in an info window or a custom HTML element
+                infoWindow = new google.maps.InfoWindow({
+                    content: infoWindowContent
+                });
+            } else {
+                console.error("PlacesServiceStatus:", status);
+            }
+        });
+
+        // Add a click listener to each marker which will show its details upon click
+        marker.addListener("click", () => {
+            // Close the currently open info window, if any
+            if (currentInfoWindow) {
+                currentInfoWindow.close();
+            }
+
+            // Open the info window at the clicked marker's position
+            infoWindow.open(map, marker);
+
+            // Update the currentInfoWindow variable
+            currentInfoWindow = infoWindow;
+        });
+    });
 }
 
+/**
+ * Removes all current markers on the map
+ *
+ * @param {} map - The map being used.
+ */
 function removeMarkers(map) {
     for (let i = 0; i < markers.length; i++) {
         markers[i].setMap(null);
     }
     markers = [];
-}
-
-//Creates a button which allows users to pan to their current location
-function setCurrentLocation() {
-    const locationButton = document.createElement("button");
-
-    locationButton.textContent = "Pan to Current Location";
-    locationButton.classList.add("custom-map-control-button");
-    map.controls[google.maps.ControlPosition.TOP_CENTER].push(
-        locationButton
-    );
-    locationButton.addEventListener("click", () => {
-        // Try HTML5 geolocation.
-        if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-            const pos = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-            };
-
-            infoWindow.setPosition(pos);
-            infoWindow.setContent("Location found.");
-            infoWindow.open(map);
-            map.setCenter(pos);
-            },
-            () => {
-            handleLocationError(true, infoWindow, map.getCenter());
-            }
-        );
-        } else {
-        // Browser doesn't support Geolocation
-        handleLocationError(false, infoWindow, map.getCenter());
-        }
-        });
-
-    function handleLocationError(browserHasGeolocation, infoWindow, pos) {
-        infoWindow.setPosition(pos);
-        infoWindow.setContent(
-            browserHasGeolocation
-            ? "Error: The Geolocation service failed."
-            : "Error: Your browser doesn't support geolocation."
-        );
-        infoWindow.open(map);
-    }
 }
 
 window.initMap = initMap;
