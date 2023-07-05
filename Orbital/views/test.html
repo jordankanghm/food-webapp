@@ -19,7 +19,7 @@
   <div class="pac-card" id="pac-card">
     <h3 id="title">Search Box</h3>
 
-    <div id="filter-container" class="pac-controls">
+    <div id="filter-container" class="pac-controls" style="display: none">
       <div class="filter-card">
         <h4>Cuisine Type</h4>
         <input id="chinese" class="type" type="checkbox">
@@ -95,13 +95,16 @@
     <div id="pac-container">
         <input id="pac-input" type="text" placeholder="Enter a location" />
         <button id="search-button">Search</button>
+        <div class="tabs">
+          <button id="saved-button">Saved</button>
+          <button id="event-trend-button">Event Trends</button>
+          <button id="food-trend-button">Food Trends</button>
+          <button id="recommendations-button">Recommendations</button>
+        </div>
     </div>
-    <button id="saved-button">Saved</button>
-    <button id="event-trend-button">Event Trends</button>
-    <button id="food-trend-button">Food Trends</button>
-    <button id="recommendations-button">Recommendations</button>
   </div>
   <div id="map"></div>
+  
   <script src="./app.js"> </script>
 </body>
 </html>
