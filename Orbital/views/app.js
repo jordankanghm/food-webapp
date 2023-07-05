@@ -1,11 +1,8 @@
 //Improvements
-//Added filtering functionalities
-//Created button to close dropdown for the search box
-//Implemented event trend functionality
-//Implemented food event functionality
-//Saved features
-//Generalise information window list
-//Recommendations feature
+//Set filter dropdown to be hidden by default
+//Set information window to display only information that is available in Google Maps API
+//Implement click function on window to zoom in on place and launch infoWindow function
+//Search Box now overlaps with the map
 
 //Require
 //A database to store user's saved lists
@@ -17,7 +14,6 @@
 //Find out why marker icons relative paths not working
 //Sharing options (requires secure server)
 //More filter options?
-//Implement click on window to zoom in on place and launch infoWindow function
 //Implement Creating, Reading, Editing, Deleting functionalities for the lists
 
 //Find out why these are not working
@@ -45,7 +41,6 @@ let savedList2 = {
 let savedLists = [savedList1, savedList2];
 
 // Replicating event trends in a database
-
 // All event trends should  have the following properties
 // name, description, duration, price range, website, distance away, placeId, share button
 let eventTrends = [
@@ -94,7 +89,7 @@ let foodTrends = [
     ]
 
 //Replicating search history in a database
-let pastSearches = ["chinese", "chinese", "korean", "chinese"]
+let pastSearches = ["chinese", "chinese", "korean", "chinese", "western", "korean"]
 
 /**
  * Initialises the map.
@@ -119,7 +114,7 @@ function initMap() {
     const searchButton = document.getElementById("search-button"); 
     // Adds an event listener such that hitting the search button performs a search
     searchButton.addEventListener("click", () => {
-        showSearchResults(searchInput.value, "search");
+        showSearchResults(searchInput.value, "search", null, null);
     })
 
     // Adds an event listener such that hitting enter performs a search
@@ -127,7 +122,7 @@ function initMap() {
         // Check if the Enter key was pressed (key code 13)
         if (event.key === "Enter") {
           event.preventDefault(); // Prevent form submission
-          showSearchResults(searchInput.value, "search");
+          showSearchResults(searchInput.value, "search", null, null);
         }
     });
 
@@ -211,7 +206,7 @@ function initMap() {
  * @param {} query - The value inputted by the user in the search box
  * @param {} purpose - The reason for triggering the search
  */
-async function showSearchResults(query, purpose) {
+async function showSearchResults(query, purpose, places, viewbound) {
     //Do not remove the markers if purpose is "recommendations"
     if (purpose === "search") {
         removeMarkers(map);
@@ -270,7 +265,8 @@ async function showSearchResults(query, purpose) {
       // Set the bounds to include the user's current location
       viewbounds.extend(currentLocation);
 
-      const searchResultsInfo = results.filter(result => {  
+      let searchResultsInfo = await Promise.all(
+        results.filter(result => {  
         // Filter results by user's price range and distance
         const distance = google.maps.geometry.spherical.computeDistanceBetween(currentLocation, result.geometry.location);
         if (priceRanges.length > 0) {
@@ -283,16 +279,41 @@ async function showSearchResults(query, purpose) {
         } else {
             return distance <= searchRadius;
         }
-      }).map(result => {
+      }).map(async result => {
+        const reviews = await new Promise((resolve, reject) => {
+            // Create a new request for place reviews as textSearch() is unable to access place reviews
+            const request = {
+                placeId: result.place_id,
+                fields: ["reviews"]
+            };
+
+            service.getDetails(request, (place, status) => {
+              if (status === google.maps.places.PlacesServiceStatus.OK) {
+                resolve(place.reviews);
+              } else {
+                reject(new Error(`PlacesServiceStatus: ${status}`));
+              }
+            })
+        });
+        
         const zIndex = counter++;
         // Sets the bounds to include the search result
+        if (viewbound) {
+            places.push(result);
+            viewbound.extend(result.geometry.location);
+        }
         viewbounds.extend(result.geometry.location);
-        return {...result, zIndex};
-      });
+        return {...result, reviews, zIndex};
+      }));
 
+      // If there are any open tabs, close them
       if (currentClosableTab) {
         currentClosableTab.remove()
-    }
+      }
+
+      if (viewbound) {
+        return {places, viewbound};
+      }
 
       if (searchResultsInfo.length === 0) {
         let content = document.createElement("p");
@@ -301,15 +322,99 @@ async function showSearchResults(query, purpose) {
         `;
         let searchBox = document.getElementById("pac-card");
         currentClosableTab = createClosableTab(searchBox, content);
+      } else {
+        // Call the setMarkers function to display the markers on the map
+        searchResultsInfo = await setMarkers(map, searchResultsInfo, "place");
+        // Create a window listing the search results
+        makeArrayWindow(searchResultsInfo, "place");
+        // Finalises the bounds based on all the search results
+        map.fitBounds(viewbounds);
+        return searchResultsInfo;
       }
-  
-      // Call the setMarkers function to display the markers on the map
-      setMarkers(map, searchResultsInfo, "place");
-      // Finalises the bounds based on all the search results
-      map.fitBounds(viewbounds);
     } catch (error) {
       console.error('Error occurred during search:', error);
     }
+}
+
+/**
+ * Creates a window which displays information from the elements in the array
+ * 
+ * @param {*} array - The array containing elements whose information we wish to display
+ * @param {*} purpose - Specifies how the information should be displayed
+ */
+function makeArrayWindow(array, purpose) {
+    // If there there is currently an open tab, close it first
+   if (currentClosableTab) {
+       currentClosableTab.remove()
+   }
+
+   // Create an information window showing all places in th array, below the search container
+   let container = document.createElement("ul")
+   container.style.height = "300px";
+   container.style.overflow = "auto";
+   container.innerHTML = "";
+
+   if (purpose === "place") {
+       for (let place of array) {
+           let placeItem = document.createElement("li");
+           placeItem.innerHTML = `
+               <h3>${place.name}</h3>
+               <hr>
+           `;
+
+           //Add an event listener which opens the information window of the place upon clicking
+           placeItem.addEventListener("click", () => {
+            google.maps.event.trigger(place.marker, "click");
+           });
+           container.appendChild(placeItem);
+       }
+   } else if (purpose === "list") {
+       // Create the button to create new lists
+       let createListButton = document.createElement("button");
+       createListButton.innerHTML = "+Create a new List";
+       createListButton.addEventListener("click", () => createNewList(container));
+       container.appendChild(createListButton);
+
+       for (let list of savedLists) {
+           let listItem = document.createElement("li");
+           listItem.innerHTML = `
+           <button>${list.name}</button>
+           `
+           listItem.addEventListener("click", () => showSavedListPlaces(list));
+           container.appendChild(listItem);
+       }
+   } else if (purpose === "eventTrend") {
+       for (let eventTrend of array) {
+           let eventTrendItem = document.createElement("li");
+           eventTrendItem.innerHTML = `
+               <h3>${eventTrend.eventName}</h3>
+               <p>Description: ${eventTrend.description}</p>
+               <hr>
+           `;
+           eventTrendItem.addEventListener("click", () => {
+            google.maps.event.trigger(eventTrend.marker, "click");
+           })
+           container.appendChild(eventTrendItem);
+       }
+   } else if (purpose === "foodList") {
+       for (let foodTrend of foodTrends) {
+           let foodTrendItem = document.createElement("li");
+           foodTrendItem.innerHTML = `
+               <button>
+                   <h3>${foodTrend.foodName}</h3>
+                   <p>Description: ${foodTrend.description}</p>
+                   <p>History: ${foodTrend.history}</p>
+                   <p>Benefits: ${foodTrend.benefits}</p>
+                   <p>Disbenefits: ${foodTrend.disbenefits}</p>
+                   <hr>
+               </button>
+           `
+           foodTrendItem.addEventListener("click", () => showFoodTrendPlaces(foodTrend));
+           container.appendChild(foodTrendItem);
+       }
+   }
+   let searchContainer = document.getElementById("pac-card");
+   currentClosableTab = createClosableTab(searchContainer, container);;
 }
 
 /**
@@ -334,7 +439,7 @@ async function setMarkers(map, array, purpose) {
 
     // Create a marker for each place
     for (let i = 0; i < array.length; i++) {
-        const result = array[i]
+        const result = await array[i]
         const marker = new google.maps.Marker({
             position: result.geometry.location,
             map,
@@ -386,9 +491,9 @@ async function setMarkers(map, array, purpose) {
             // Create an info window depending on the purpose at the clicked marker's position 
             // and change the marker icon
             if (purpose === "place" || purpose === "foodTrend") {
-                infoWindow = makePlaceWindow(result);
+                infoWindow = makePlaceInfoWindow(result);
             } else if (purpose === "eventTrend") {
-                infoWindow = makeEventTrendWindow(result);
+                infoWindow = makeEventTrendInfoWindow(result);
             } 
             infoWindow.open(map, marker);
             marker.setIcon(chosenImage);
@@ -397,79 +502,21 @@ async function setMarkers(map, array, purpose) {
             currentInfoWindow = infoWindow;
             currentMarker = marker;
         });
+        array[i] = {...array[i], marker};
     }
+    return array;
 }
 
 /**
- * Creates a window which displays information from the elements in the array
- * 
- * @param {*} array - The array containing elements whose information we wish to display
- * @param {*} purpose - Specifies how the information should be displayed
+ * Removes all current markers on the map
+ *
+ * @param {} map - The map being used.
  */
-function makeArrayWindow(array, purpose) {
-     // If there there is currently an open tab, close it first
-    if (currentClosableTab) {
-        currentClosableTab.remove()
+function removeMarkers(map) {
+    for (let i = 0; i < markers.length; i++) {
+        markers[i].setMap(null);
     }
-
-    // Create an information window showing all event trends below the search container
-    let container = document.createElement("ul")
-    container.innerHTML = "";
-     
-    if (purpose === "place") {
-        for (let place of array) {
-            let placeItem = document.createElement("li");
-            placeItem.innerHTML = `
-                <h3>${place.name}</h3>
-                <hr>
-            `;
-            container.appendChild(placeItem);
-            console.log(container)
-        }
-    } else if (purpose === "list") {
-        // Create the button to create new lists
-        let createListButton = document.createElement("button");
-        createListButton.innerHTML = "+Create a new List";
-        createListButton.addEventListener("click", () => createNewList(container));
-        container.appendChild(createListButton);
-
-        for (let list of savedLists) {
-            let listItem = document.createElement("li");
-            listItem.innerHTML = `
-            <button>${list.name}</button>
-            `
-            listItem.addEventListener("click", () => showSavedListPlaces(list));
-            container.appendChild(listItem);
-        }
-    } else if (purpose === "eventTrend") {
-        for (let eventTrend of array) {
-            let eventTrendItem = document.createElement("li");
-            eventTrendItem.innerHTML = `
-                <h3>${eventTrend.eventName}</h3>
-                <p>Description: ${eventTrend.description}</p>
-                <hr>
-            `;
-            container.appendChild(eventTrendItem);
-        }
-    } else if (purpose === "foodList") {
-        for (let foodTrend of foodTrends) {
-            let foodTrendItem = document.createElement("li");
-            foodTrendItem.innerHTML = `
-                <button>
-                    <h3>${foodTrend.foodName}</h3>
-                    <p>Description: ${foodTrend.description}</p>
-                    <p>History: ${foodTrend.history}</p>
-                    <p>Benefits: ${foodTrend.benefits}</p>
-                    <p>Disbenefits: ${foodTrend.disbenefits}</p>
-                    <hr>
-                </button>
-            `
-            foodTrendItem.addEventListener("click", () => showFoodTrendPlaces(foodTrend));
-            container.appendChild(foodTrendItem);
-        }
-    }
-    let searchContainer = document.getElementById("pac-card");
-    currentClosableTab = createClosableTab(searchContainer, container);;
+    markers = [];
 }
 
 /**
@@ -479,30 +526,7 @@ function makeArrayWindow(array, purpose) {
  * @param {} result - The place which we require details about
  * @returns The info window containing all the information regarding the place
  */
-function makePlaceWindow(result) {
-    //If the place has reviews, retrieve them
-    let reviewsContent = '';
-    if (result.reviews && result.reviews.length > 0) {
-        result.reviews.forEach(review => {
-            reviewsContent += `
-                <p>Review: ${review.text}</p>
-                <p>Rating: ${review.rating}</p>
-                <p>Author: ${review.author_name}</p>
-                <hr>
-            `;
-        });
-    }
-
-    //If the place has photos, retrieve them
-    let photoContent = document.createElement("div");
-    if (result.photos && result.photos.length > 0) {
-        result.photos.forEach(photo => {
-            const img = document.createElement("img");
-            img.src = photo.getUrl({ maxWidth: 400, maxHeight: 400 });
-            photoContent.appendChild(img);
-        });
-    }
-
+function makePlaceInfoWindow(result) {
     let shareButton = document.createElement("button");
     shareButton.innerText = "Share";
     shareButton.addEventListener("click", () => {
@@ -519,40 +543,72 @@ function makePlaceWindow(result) {
             console.log("Web Share API is not supported in this browser.");
             // Provide an alternative sharing method or display an error message
         }
-    })
+    });
+
+    // If the place has a phone number, retrieve it
+    let phoneNumber = "";
+    if (result.formatted_phone_number) {
+        phoneNumber = `Phone Number: ${result.formatted_phone_number}`
+    }
+
+    // If the place has a website, retrieve it
+    let website = "";
+    if (result.website !== undefined) {
+        website = `Website: ${result.website}`
+    }
+
+    // If the place has a price level, retrieve it
+    let priceLevel = ""
+    if (result.price_level !== undefined) {
+        priceLevel = `Price Level: ${result.price_level}`
+    }
+
+    // If the place has reviews, retrieve them
+    let reviewsContent = "";
+
+    if (result.reviews && result.reviews.length > 0) {
+        result.reviews.forEach(review => {
+            reviewsContent += `
+                <p>Review: ${review.text}</p>
+                <p>Rating: ${review.rating}</p>
+                <p>Author: ${review.author_name}</p>
+                <hr>
+            `;
+        });
+    }
+
+    // If the place has photos, retrieve them
+    let photoContent = "";
+    if (result.photos && result.photos.length > 0) {
+        photoContent = document.createElement("div")
+        result.photos.forEach(photo => {
+            const img = document.createElement("img");
+            img.src = photo.getUrl({ maxWidth: 400, maxHeight: 400 });
+            photoContent.appendChild(img);
+        });
+        photoContent = photoContent.innerHTML;
+    }
+
     //The content to be displayed in the info window
     const infoWindowContent = `
         <h3>${result.name}</h3>
         ${shareButton.outerHTML}
         <p>Address: ${result.formatted_address}</p>
-        <p>Phone Number: ${result.formatted_phone_number}</p>
+        ${phoneNumber}
         <p>Distance: ${(google.maps.geometry.spherical.computeDistanceBetween(currentLocation, result.geometry.location) / 1000).toFixed(1)}km away</p>
-        <p>Website: <a href="${result.website}" target="_blank">${result.website}</a></p>
-        <p>Opening Hours: ${result.opening_hours}</p>
-        <p>Price Level: ${result.price_level}</p>
-        <p>Rating: ${result.rating}</p>
+        ${website}
+        ${priceLevel}
+        <p>Rating: ${result.rating} stars</p>
         <p>Number of ratings: ${result.user_ratings_total}</p>
-        <p>Reviews: ${reviewsContent}</p>
-        <p>Photos: ${photoContent.innerHTML}</p>
-    `
+        ${reviewsContent}
+        ${photoContent}
+        `
 
     const infoWindow = new google.maps.InfoWindow({
         content: infoWindowContent
     });
 
     return infoWindow;
-}
-
-/**
- * Removes all current markers on the map
- *
- * @param {} map - The map being used.
- */
-function removeMarkers(map) {
-    for (let i = 0; i < markers.length; i++) {
-        markers[i].setMap(null);
-    }
-    markers = [];
 }
 
 function createNewList(lists) {
@@ -636,8 +692,8 @@ async function showSavedListPlaces(list) {
         
         try {
             //Wait for all details to be retrieved
-            const results = await Promise.all(promises);
-            setMarkers(map, results, "place");
+            let results = await Promise.all(promises);
+            results = await setMarkers(map, results, "place");
             makeArrayWindow(results, "place")
             //Finalise the user's viewport to fit all the places
             map.fitBounds(viewbounds);
@@ -688,9 +744,9 @@ async function showEventTrends() {
   
     try {
         //Wait for all details to be retrieved
-        const results = await Promise.all(promises);
-        setMarkers(map, results, "eventTrend");
-        makeArrayWindow(eventTrends, "eventTrend")
+        let results = await Promise.all(promises);
+        results = await setMarkers(map, results, "eventTrend");
+        makeArrayWindow(results, "eventTrend")
         //Finalise the user's viewport to fit all the places
         map.fitBounds(viewbounds);
     } catch (error) {
@@ -704,7 +760,7 @@ async function showEventTrends() {
  * @param {} result - The place which we require details about
  * @returns The info window containing all the information about the trending food event
  */
-function makeEventTrendWindow(result) {
+function makeEventTrendInfoWindow(result) {
     // event name, event duration, location, price range(if available), 
     // distance away, description, share button
     const infoWindowContent = `
@@ -765,9 +821,9 @@ async function showFoodTrendPlaces(foodTrend) {
         });
     });
 
-    const places = await Promise.all(placePromises);
+    let places = await Promise.all(placePromises);
 
-    setMarkers(map, places, "foodTrend");
+    places = await setMarkers(map, places, "foodTrend");
     makeArrayWindow(places, "place")
     // Finalises the bounds based on all the search results
     map.fitBounds(viewbounds);
@@ -788,7 +844,8 @@ function createClosableTab(elementToAppendTo, content) {
         container.remove();
     })
     container.append(closeButton, content);
-    elementToAppendTo.insertAdjacentElement("afterend", container)
+    elementToAppendTo.appendChild(container);
+    // elementToAppendTo.insertAdjacentElement("afterend", container)
     return container;
 }
 
@@ -804,7 +861,6 @@ async function showRecommendations() {
     removeMarkers(map)
 
     const numSearches = pastSearches.length;
-    console.log(`pastSearches has ${numSearches} elements`)
     let pastTenSearches = "";
     let counter = 1;
     for (let i = numSearches - 1; i >= 0; i--) {
@@ -817,28 +873,19 @@ async function showRecommendations() {
             break;
         }
     }
-    console.log(`pastTenSearches has ${pastTenSearches.length} elements`)
 
     // Convert the string to lowercase and remove punctuations
     const normalizedText = pastTenSearches.toLowerCase().replace(/[^\w\s]/g, "");
     // Separate the words into an array
     const words = normalizedText.split(" ");
+    // Remove the last element which is an empty space
+    words.pop();
 
     // Storing word-count pairs
     const wordFrequencies = new Map();
 
-    // Keeping track of the current top 3 words
-    let first = 0;
-    let second = 0;
-    let third = 0;
-    let firstWord = "";
-    let secondWord = "";
-    let thirdWord = "";
-
-    console.log(words.length)
     for (let i = 0; i < words.length; i++) {
         let word = words[i];
-        console.log(word)
         let currentCount;
 
         // If the table does not contain the word, initialise its count to 1
@@ -850,46 +897,60 @@ async function showRecommendations() {
             currentCount++;
             wordFrequencies.set(word, currentCount);
         }
-
-        // Update the top 3 words if needed
-        if (currentCount > first) {
-            if (word === firstWord) {
-                first++;
-            } else {
-                third = second;
-                thirdWord = secondWord;
-                second = first;
-                secondWord = firstWord;
-                first = currentCount;
-                firstWord = word;
-            }
-        } else if (currentCount > second) {
-            if (word === secondWord) {
-                second++;
-            } else {
-                third = second;
-                thirdWord = secondWord;
-                second = currentCount;
-                secondWord = word;
-            }
-        } else if (currentCount > third) {
-            if (word === thirdWord) {
-                third++;
-            } else {
-                third = currentCount;
-                thirdWord = word;
-            }
-        }
-        console.log("Current Ranking: ")
-        console.log(`${firstWord}, Count: ${first}`)
-        console.log(`${secondWord}, Count: ${second}`)
-        console.log(`${thirdWord}, Count: ${third}`)
     };
 
-    // Display the search results for the top 3 words
-    await showSearchResults(firstWord, "recommendations");
-    await showSearchResults(secondWord, "recommendations");
-    await showSearchResults(thirdWord, "recommendations");
+     // Create an array of [key, value] pairs from the map
+    const pairs = Array.from(wordFrequencies);
+
+    // Sort the pairs in descending order based on frequencies
+    pairs.sort((a, b) => b[1] - a[1]);
+
+    // Get the keys of the top 3 pairs
+    const topThreeKeys = pairs.slice(0, 3).map(pair => pair[0]);
+
+    const firstWord = pairs[0];
+    const secondWord = pairs[1];
+    const thirdWord = pairs[2];
+
+    let viewbound = new google.maps.LatLngBounds();
+    viewbound.extend(currentLocation);
+    let places = [];
+    
+    // If there is no firstWord, show the default search results
+    // If there is no secondWord, show only results for the firstWord
+    if (!firstWord || !secondWord) {
+        showSearchResults(firstWord, "recommendations", null, null);
+    // If there is no thirdWord, show only results for the first and second words
+    } else if (!thirdWord) {
+        let results = await showSearchResults(firstWord, "recommendations", places, viewbound)
+        results = await showSearchResults(secondWord, "recommendations", results.places, results.viewbound)
+        places = results.places;
+        // Finalises the bounds based on all the search results
+        map.fitBounds(results.viewbound);
+    // If all three words are present, show their search results
+    } else {
+        let results = await showSearchResults(firstWord, "recommendations", places, viewbound)
+        results = await showSearchResults(secondWord, "recommendations", results.places, results.viewbound)
+        results = await showSearchResults(thirdWord, "recommendations", results.places, results.viewbound)
+        places = results.places;
+        // Finalises the bounds based on all the search results
+        map.fitBounds(results.viewbound);
+    }
+
+    if (places.length === 0) {
+        let content = document.createElement("p");
+        content.innerHTML =`
+            <h3>No places found<h3>
+        `;
+        let searchBox = document.getElementById("pac-card");
+        currentClosableTab = createClosableTab(searchBox, content);
+    } else {
+        // Call the setMarkers function to display the markers on the map
+        places = await setMarkers(map, places, "place");
+        // Create a window listing the search results
+        makeArrayWindow(places, "place");
+    }
+      
 }
 
 window.initMap = initMap;
