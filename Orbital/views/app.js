@@ -1,8 +1,6 @@
 //Improvements
-//Set filter dropdown to be hidden by default
-//Set information window to display only information that is available in Google Maps API
-//Implement click function on window to zoom in on place and launch infoWindow function
-//Search Box now overlaps with the map
+//Styled pac card
+
 
 //Require
 //A database to store user's saved lists
@@ -132,8 +130,12 @@ function initMap() {
     closeButton.addEventListener("click", () => {
         if (filterContainer.style.display === "none") {
             filterContainer.style.display = "inline-block";
+            closeButton.innerHTML = "▲";
+            closeButton.style.margin = "0"
         } else {
             filterContainer.style.display = "none";
+            closeButton.innerHTML = "▼";
+            closeButton.style.margin = "5px 0 0 0"
         }
     });
 
@@ -361,6 +363,7 @@ function makeArrayWindow(array, purpose) {
                <h3>${place.name}</h3>
                <hr>
            `;
+           placeItem.style.cursor = "pointer";
 
            //Add an event listener which opens the information window of the place upon clicking
            placeItem.addEventListener("click", () => {
@@ -370,16 +373,19 @@ function makeArrayWindow(array, purpose) {
        }
    } else if (purpose === "list") {
        // Create the button to create new lists
-       let createListButton = document.createElement("button");
+       let createListButton = document.createElement("h3");
        createListButton.innerHTML = "+Create a new List";
        createListButton.addEventListener("click", () => createNewList(container));
+       createListButton.style.cursor = "pointer";
        container.appendChild(createListButton);
 
        for (let list of savedLists) {
            let listItem = document.createElement("li");
            listItem.innerHTML = `
-           <button>${list.name}</button>
+           <h3>${list.name}</h3>
            `
+           listItem.style.cursor = "pointer";
+
            listItem.addEventListener("click", () => showSavedListPlaces(list));
            container.appendChild(listItem);
        }
@@ -391,6 +397,8 @@ function makeArrayWindow(array, purpose) {
                <p>Description: ${eventTrend.description}</p>
                <hr>
            `;
+           eventTrendItem.style.cursor = "pointer";
+
            eventTrendItem.addEventListener("click", () => {
             google.maps.event.trigger(eventTrend.marker, "click");
            })
@@ -400,15 +408,15 @@ function makeArrayWindow(array, purpose) {
        for (let foodTrend of foodTrends) {
            let foodTrendItem = document.createElement("li");
            foodTrendItem.innerHTML = `
-               <button>
-                   <h3>${foodTrend.foodName}</h3>
-                   <p>Description: ${foodTrend.description}</p>
-                   <p>History: ${foodTrend.history}</p>
-                   <p>Benefits: ${foodTrend.benefits}</p>
-                   <p>Disbenefits: ${foodTrend.disbenefits}</p>
-                   <hr>
-               </button>
+                <h3>${foodTrend.foodName}</h3>
+                <p>Description: ${foodTrend.description}</p>
+                <p>History: ${foodTrend.history}</p>
+                <p>Benefits: ${foodTrend.benefits}</p>
+                <p>Disbenefits: ${foodTrend.disbenefits}</p>
+                <hr>
            `
+           foodTrendItem.style.cursor = "pointer";
+
            foodTrendItem.addEventListener("click", () => showFoodTrendPlaces(foodTrend));
            container.appendChild(foodTrendItem);
        }
@@ -570,7 +578,7 @@ function makePlaceInfoWindow(result) {
         result.reviews.forEach(review => {
             reviewsContent += `
                 <p>Review: ${review.text}</p>
-                <p>Rating: ${review.rating}</p>
+                <p>Rating: ${review.rating}/5</p>
                 <p>Author: ${review.author_name}</p>
                 <hr>
             `;
@@ -840,10 +848,12 @@ function createClosableTab(elementToAppendTo, content) {
     let container = document.createElement("div");
     let closeButton = document.createElement("button");
     closeButton.innerText = "X";
+    closeButton.style.textAlign= "end";
     closeButton.addEventListener("click", () => {
         container.remove();
     })
     container.append(closeButton, content);
+    container.style.margin = "5px 0 0 0"
     elementToAppendTo.appendChild(container);
     // elementToAppendTo.insertAdjacentElement("afterend", container)
     return container;
