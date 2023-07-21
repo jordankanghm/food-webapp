@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const User = require("../models/userModel");
+const userSchema = require("../models/userModel");
 
 // WORKS!!
 // Create a new user and associated collection
@@ -9,7 +9,8 @@ exports.createUser = async (req, res) => {
     console.log(`${name}, ${email}, ${username}, ${password}`);
 
     // Check if a collection with the same username already exists
-    const collectionExists = mongoose.connection.collections[username];
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    const collectionExists = collections.some((collection) => collection.name === username);    
     if (collectionExists) {
       return res.status(400).json({
         status: "error",
@@ -19,7 +20,7 @@ exports.createUser = async (req, res) => {
     console.log("Username is unique")
 
     // Create a new model with the specified collection name and schema
-    const CollectionModel = mongoose.model(username, User.schema, username);
+    const CollectionModel = mongoose.model(username, userSchema, username);
     console.log(`New model is created with name: ${username}`)
 
     const newUser = CollectionModel.create({
@@ -30,9 +31,6 @@ exports.createUser = async (req, res) => {
         lists: [],
         searchHistory: []
     })
-
-    // Now, you have a new collection with the same name as the username
-    // You can perform CRUD operations on this collection using CollectionModel
 
     res.status(201).json({
       status: "success",

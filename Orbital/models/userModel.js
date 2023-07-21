@@ -19,14 +19,21 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  lists: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "List"
-  }],
+  lists: {
+    type: [{
+      listName: {
+        type: String,
+        required: true
+      },
+      placeIds: {
+        type: [String]
+      }
+    }]
+  },
   searchHistory: {
     type: [String],
     default: []
   }
 });
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = userSchema;

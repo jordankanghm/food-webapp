@@ -7,13 +7,13 @@ router
     .route("/")
     .post(listController.createNewList)
     .get(listController.getAllLists)
+    .delete(listController.deleteList)
 
 router
     .route("/:listId")
-    .get(listController.getListPlaces)
+    .get(listController.getList)
     .post(listController.addNewPlace)
     .patch(listController.updateListName)
-    .delete(listController.deleteList)
     .delete(listController.deleteListPlace)
 
 module.exports = router;
