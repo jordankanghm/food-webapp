@@ -1,7 +1,13 @@
+// Require
+// Linking buttons to requests for saved lists
+// Linking food and event Trends
+// Working out the logic for recommendations
+
 const express = require("express");
 const app = express();
 const userRouter = require("./routes/userRoutes")
 const listRouter = require("./routes/listRoutes")
+const searchHistoryRouter = require("./routes/searchHistoryRoutes")
 const renderInitialPage = require("./views/initialRender");
 const path = require("path");
 
@@ -21,9 +27,10 @@ app.use("/", userRouter);
 // Navigate to listRouter whenever the lists route is requested
 app.use("/:username/lists", listRouter);
 
+// Navigate to searchHistoryRouter whenever the searchHistory route is requested
+app.use("/:username/searchHistory", searchHistoryRouter);
+
 // Render the initial EJS file before defining your routers
 app.use(renderInitialPage);
-
-
 
 module.exports = app;

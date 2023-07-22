@@ -15,18 +15,15 @@
 //Implement Creating, Reading, Editing, Deleting functionalities for the lists
 //Find food trends and food events for database
 
-//Find out why these are not working
-// const express = require("express");
-// console.dir(express)
-// const app = express();
-// const path = require("path");
-// app.set("view engine", "ejs");
-// app.set("views", path.join(__dirname, "/views"));
-// app.use(express.static(path.join(__dirname, "/public")));
-
 let map, currentLocation, currentMarker, currentInfoWindow, currentClosableTab;
 let searchRadius = 50000;
 let markers = [];
+
+const fs = require("fs");
+const eventTrends = JSON.parse(fs.readFileSync("../data/eventTrends"));
+const foodTrends = JSON.parse(fs.readFileSync("../data/foodTrends"));
+console.log(eventTrends)
+console.log(foodTrends)
 
 //Replicating saved lists in a database
 let savedList1 = {
@@ -729,7 +726,7 @@ async function showEventTrends() {
     const viewbounds = new google.maps.LatLngBounds();
     // Set the current viewport to include the user's current location
     viewbounds.extend(currentLocation);
-  
+
     const promises = eventTrends.map(async result => {
       const zIndex = counter++;
   
