@@ -4,6 +4,7 @@ let markers = [];
 
 //username of user obtained from somewhere
 const username = "johnny"
+console.log("")
 
 /**
  * Initialises the map.
