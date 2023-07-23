@@ -1,5 +1,6 @@
 # jordankanghm.github.io
 
+functionalities
 How to use:
 
 git clone the functionalities branch of jordankanghm.github.io respisotory or download the branch's ZIP file of the respisotory
