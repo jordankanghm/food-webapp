@@ -40,7 +40,7 @@ exports.createNewList = async (req, res) => {
         // Save the updated user
         await user.save();
 
-        console.log("DELETE REQUEST COMPLETED SUCCESSFULLY")
+        console.log("CREATE NEW LIST REQUEST COMPLETED SUCCESSFULLY")
     
         res.status(201).json({
           status: "success",
@@ -221,14 +221,30 @@ exports.getList = async (req, res) => {
 }
 
 // Takes a name as input and changes the name of the list 
-// Requires a username and listName parameter and listName variable in body)
+// Requires a username and listName parameter and newListName variable in body)
 exports.updateListName = async (req, res) => {
     try {
+        console.log("THIS IS THE START OF UPDATE LIST NAME")
         const { username, listName } = req.params;
         const { newListName } = req.body;
+        console.log(`Username: ${username}`)
+        console.log(`listName: ${listName}`)
+        console.log(`newListName: ${newListName}`)
 
         // Find the user's lists by username
         const user = await List.findOne({username});
+
+        // Check if newListName is unique
+        const duplicateIndex = user.lists.findIndex(list => list.listName === newListName);
+        console.log(`Duplicate name at index: ${duplicateIndex}`)
+
+        if (duplicateIndex !== -1) {
+            return res.status(404).json({
+            status: "error",
+            message: "List name already exists",
+            });
+        }
+        console.log("List name is unique")
 
         // Find the index of the element with listName
         const listIndex = user.lists.findIndex(list => list.listName === listName);
@@ -269,6 +285,7 @@ exports.updateListName = async (req, res) => {
 // Requires a username and listName parameter and placeId in body)
 exports.deleteListPlace = async (req, res) => {
     try {
+        console.log("I AM IN DELETE LIST PLACE")
         const { username, listName } = req.params;
         const { placeId } = req.body;
         console.log(`Username: ${username}`)
@@ -298,6 +315,7 @@ exports.deleteListPlace = async (req, res) => {
 
         // Find the index of the element with listName
         const placeIndex = list.placeIds.indexOf(placeId);
+        console.log(`Index of placeId is: ${placeIndex}`)
 
         if (placeIndex === -1) {
             return res.status(404).json({
@@ -305,9 +323,11 @@ exports.deleteListPlace = async (req, res) => {
             message: "Place is not in the list",
             });
         }
+        console.log("placeId is in the list")
 
         // Remove the place from the list
         list.placeIds.splice(placeIndex, 1);
+        console.log(`New placeId array is ${list.placeIds}`)
             
 
         // Save the updated user

@@ -102,7 +102,7 @@ function initMap() {
     
         // Add 'active' class to the clicked tab
         foodTrendButton.classList.add('active');
-        makeArrayWindow(foodTrends, "foodList")
+        makeArrayWindow(foodTrends, "foodList", null)
     });
 
     //Show recommended places when recommendations button is clicked
@@ -291,7 +291,7 @@ async function showSearchResults(query, purpose, places, viewbound) {
         // Call the setMarkers function to display the markers on the map
         searchResultsInfo = await setMarkers(map, searchResultsInfo, "place");
         // Create a window listing the search results
-        makeArrayWindow(searchResultsInfo, "place");
+        makeArrayWindow(searchResultsInfo, "place", null);
         // Finalises the bounds based on all the search results
         map.fitBounds(viewbounds);
         return searchResultsInfo;
@@ -307,7 +307,7 @@ async function showSearchResults(query, purpose, places, viewbound) {
  * @param {*} array - The array containing elements whose information we wish to display
  * @param {*} purpose - Specifies how the information should be displayed
  */
-function makeArrayWindow(array, purpose) {
+function makeArrayWindow(array, purpose, placeId) {
     // If there there is currently an open tab, close it first
    if (currentClosableTab) {
        currentClosableTab.remove()
@@ -319,17 +319,83 @@ function makeArrayWindow(array, purpose) {
    container.style.overflow = "auto";
    container.innerHTML = "";
 
-   if (purpose === "place") {
+   if (purpose === "addToList"){
+        console.log("I AM IN MAKE ARRAY WINDOW ADD TO LIST!!")
+        const title = document.createElement("h4");
+        title.innerText = "Select a list to add to"
+        container.appendChild(title)
+        let lists = document.createElement("ul")
+        for (let listName of array) {
+            let box = document.createElement("li");
+            let listButton = document.createElement("button");
+            listButton.innerText = listName;
+            box.appendChild(listButton)
+            lists.appendChild(box);
+            
+            listButton.addEventListener("click", async () => {
+                // Requires a username and listName parameter and placeId variable in body)
+                const request = {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        placeId
+                    })
+                }
+
+                const res = await fetch(`/${username}/lists/${listName}`, request)
+                const data = await res.json();
+
+                if (res.status === 400) {
+                    window.alert("Place is already in the list");
+                    return;
+                }
+                window.alert(`Place successfully added to list ${listName}`)
+            })
+        }
+        container.appendChild(lists);
+   } else if (purpose === "place" || purpose === "listPlace") {
        for (let place of array) {
            let placeItem = document.createElement("li");
-           placeItem.innerHTML = `
-               <h3>${place.name}</h3>
-               <hr>
-           `;
+           if (purpose === "place") {
+            placeItem.innerHTML = `
+                <h3>${place.name}</h3>
+                <hr>
+            `;
+           }
+
+           if (purpose === "listPlace") {
+            placeItem.innerHTML = `<h3>${place.name}</h3>`
+            const deleteButton = document.createElement("button");
+            deleteButton.innerText = "Delete"
+            placeItem.append(deleteButton);
+            deleteButton.addEventListener("click", async event => {
+                event.stopPropagation();
+                console.log(`Placeid is: `)
+                console.log(place.place_id)
+                const request = {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        placeId: place.place_id
+                    })
+                }
+
+                // placeId here actually represents the listName
+                const res = await fetch(`/${username}/lists/${placeId}`, request);
+                const data = await res.json();
+                window.alert(`Place has been removed from list ${placeId}`)
+                placeItem.remove();
+            })
+           }
            placeItem.style.cursor = "pointer";
 
            //Add an event listener which opens the information window of the place upon clicking
-           placeItem.addEventListener("click", () => {
+           placeItem.addEventListener("click", event => {
+            event.stopPropagation();
             google.maps.event.trigger(place.marker, "click");
            });
            container.appendChild(placeItem);
@@ -340,20 +406,49 @@ function makeArrayWindow(array, purpose) {
        let createListButton = document.createElement("h4");
        createListButton.innerHTML = "+ Create a new List";
        createListButton.style.marginBottom = "5px";
-       createListButton.addEventListener("click", () => createNewList(container));
+       createListButton.addEventListener("click", async () => {
+        let listName = "";
+        listName = prompt("Please input a name for the list.");
+
+        while (listName === "") {
+            listName = prompt("Please input at least one character")
+        }
+
+        const request = {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                listName
+            })
+        }
+
+        const res = await fetch(`/${username}/lists`, request)
+        const data = res.json()
+
+        console.log(`status code is ${res.status}`)
+        if (res.status === 400) {
+            window.alert("There is already a list with the same name");
+            return;
+        }
+        console.log(res)
+        showAllLists();
+       });
        createListButton.style.cursor = "pointer";
        container.appendChild(createListButton);
 
        for (let list of array) {
            let listItem = document.createElement("li");
+           let listName = document.createElement("h3");
+           listName.innerText = list.listName
            let editButton = document.createElement("button");
            editButton.innerText = "Edit";
            let deleteButton = document.createElement("button");
            deleteButton.innerText = "Delete";
-           listItem.innerHTML = `
-           <h3>${list.listName}</h3>
-           `
-           // Append the buttons to the list item
+        
+           // Append the elements to the list item
+            listItem.appendChild(listName);
             listItem.appendChild(editButton);
             listItem.appendChild(deleteButton);
 
@@ -361,13 +456,46 @@ function makeArrayWindow(array, purpose) {
            editButton.style.cursor = "pointer";
            deleteButton.style.cursor = "pointer";
 
-           editButton.addEventListener("click", () => {
+           editButton.addEventListener("click", async event => {
+            // Prevent the event from bubbling up
+            event.stopPropagation();
+            let newListName = "";
+            newListName = prompt("Please input a new name for the list")
+
+            while (newListName === "") {
+                newListName = prompt("Please input at least one character");
+            }
+
+            console.log(`NEW LIST NAME IS: ${newListName}`);
+
+            const request = {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    newListName
+                })
+            }
             
+            const res = await fetch(`/${username}/lists/${list.listName}`, request);
+            const data = await res.json();
+            
+            if (res.status === 404) {
+                window.alert("Please input a name that is not currently used")
+                return;
+            }
+            listName.innerText = newListName;
+            list.listName = newListName;
+            window.alert("List name updated successfully")
            })
 
            // Requires a username parameter and listName variable from body
-           deleteButton.addEventListener("click", async () => {
+           deleteButton.addEventListener("click", async event => {
+            // Prevent the event from bubbling up
+            event.stopPropagation();
             console.log(`LIST NAME IS: ${list.listName}`)
+            console.log(list.listName)
                 const request = {
                     method: "DELETE",
                     headers: {
@@ -378,12 +506,17 @@ function makeArrayWindow(array, purpose) {
                     })
                 }
                 
-                const res = await fetch(`/${username}/lists`, request)
-                                    .then(response => response.json())
+                const res = await fetch(`/${username}/lists`, request);
+                const data = await res.json();
                 listItem.remove();
+                window.alert("List deleted successfully")
            })
 
-           listItem.addEventListener("click", () => showSavedListPlaces(list));
+           listItem.addEventListener("click", event => {
+            // Prevent the event from bubbling up
+            event.stopPropagation();
+            showSavedListPlaces(list)
+           });
            container.appendChild(listItem);
        }
    } else if (purpose === "eventTrend") {
@@ -501,6 +634,7 @@ async function setMarkers(map, array, purpose) {
             // and change the marker icon
             if (purpose === "place" || purpose === "foodTrend" || purpose === "recommendations") {
                 infoWindow = makePlaceInfoWindow(result);
+                //HERE!!
             } else if (purpose === "eventTrend") {
                 infoWindow = makeEventTrendInfoWindow(result);
             } 
@@ -537,24 +671,7 @@ function removeMarkers(map) {
  * @returns The info window containing all the information regarding the place
  */
 function makePlaceInfoWindow(result) {
-    let shareButton = document.createElement("button");
-    shareButton.innerText = "Share";
-    shareButton.addEventListener("click", () => {
-         // Check if the Web Share API is supported by the browser
-        if (navigator.share) {
-            navigator.share({
-            title: "Place Title",
-            text: "Check out this amazing place!",
-            url: "https://example.com/place"
-            })
-            .then(() => console.log("Place shared successfully."))
-            .catch((error) => console.log("Error sharing place:", error));
-        } else {
-            console.log("Web Share API is not supported in this browser.");
-            // Provide an alternative sharing method or display an error message
-        }
-    });
-
+    console.log("I AM MAKE PLACE WINDOW")
     // If the place has a phone number, retrieve it
     let phoneNumber = "";
     if (result.formatted_phone_number) {
@@ -599,10 +716,14 @@ function makePlaceInfoWindow(result) {
         photoContent = photoContent.innerHTML;
     }
 
+    console.log("Got all info")
+    // console.log(addToListButton.outerHTML)
+
     //The content to be displayed in the info window
     const infoWindowContent = `
         <h3>${result.name}</h3>
-        ${shareButton.outerHTML}
+        <button id="share-button">Share</button>
+        <button id="add-to-list-button">+ Add To List</button>
         <p>Address: ${result.formatted_address}</p>
         ${phoneNumber}
         <p>Distance: ${(google.maps.geometry.spherical.computeDistanceBetween(currentLocation, result.geometry.location) / 1000).toFixed(1)}km away</p>
@@ -612,11 +733,52 @@ function makePlaceInfoWindow(result) {
         <p>Number of ratings: ${result.user_ratings_total}</p>
         ${reviewsContent}
         ${photoContent}
-        `
+    `
 
     const infoWindow = new google.maps.InfoWindow({
         content: infoWindowContent
     });
+
+    google.maps.event.addListenerOnce(infoWindow, "domready", () => {
+        const shareButton = document.getElementById("share-button");
+        shareButton.addEventListener("click", () => {
+            console.log("SHARE BUTTON WORKING")
+                // Check if the Web Share API is supported by the browser
+            if (navigator.share) {
+                navigator.share({
+                title: "Place Title",
+                text: "Check out this amazing place!",
+                url: "https://example.com/place"
+                })
+                .then(() => console.log("Place shared successfully."))
+                .catch((error) => console.log("Error sharing place:", error));
+            } else {
+                console.log("Web Share API is not supported in this browser.");
+                // Provide an alternative sharing method or display an error message
+            }
+        });
+
+        const addToListButton = document.getElementById("add-to-list-button");
+        addToListButton.addEventListener("click", async () => {
+            console.log("ADD TO LIST BUTTON WORKING")
+            const request = {
+                method: "GET"
+            }
+
+            const res = await fetch(`/${username}/lists`, request)
+            const resu = await res.json()
+            const listNames = resu.data.map(list => list.listName);
+            console.log("Result is: ")
+            console.log(result)
+            console.log(`Placeid is: ${result.place_id}`)
+            makeArrayWindow(listNames, "addToList", result.place_id)
+        })
+    });
+
+     // Append the addToListButton to the info window before opening it
+    //  const div = document.createElement('div');
+    //  div.appendChild(addToListButton);
+    //  infoWindow.setContent(div.innerHTML + infoWindowContent);
 
     return infoWindow;
 }
@@ -661,7 +823,7 @@ async function showAllLists() {
     console.log(`Fetching saved lists for ${username}`)
     const res = await fetch(`/${username}/lists`, request)
                         .then(response => response.json())
-    makeArrayWindow(res.data, "list");
+    makeArrayWindow(res.data, "list", null);
 }
 
 /**
@@ -721,7 +883,7 @@ async function showSavedListPlaces(list) {
             //Wait for all details to be retrieved
             let results = await Promise.all(promises);
             results = await setMarkers(map, results, "place");
-            makeArrayWindow(results, "place")
+            makeArrayWindow(results, "listPlace", list.listName)
             //Finalise the user's viewport to fit all the places
             map.fitBounds(viewbounds);
         } catch (error) {
