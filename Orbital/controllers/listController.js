@@ -1,6 +1,4 @@
-const mongoose = require("mongoose");
-// const List = require("../models/listModel");
-const userSchema = require("../models/userModel");
+const List = require("../models/listsModel");
 
 // For /lists
 
@@ -8,13 +6,18 @@ const userSchema = require("../models/userModel");
 // Request requires a username parameter and listName variable in body
 exports.createNewList = async (req, res) => {
     try {
+        console.log("I AM THE CREATE NEW LIST REQUEST")
+
         // Get the username and listName from the request parameters and body
         const { username } = req.params;
         const { listName } = req.body;
+        console.log(`Username: ${username}`)
+        console.log(`Listname: ${listName}`)
     
-        // Find the user collection by username
-        const UserModel = mongoose.model(username, userSchema, username);
-        const user = await UserModel.findOne({ username });
+        // Find the user's lists by username
+        const user = await List.findOne({ username });
+        console.log("User is: ")
+        console.log(user)
 
         // Check if a list with the same name already exists for the user
         const existingList = user.lists.find(list => list.listName === listName);
@@ -24,16 +27,20 @@ exports.createNewList = async (req, res) => {
                 message: "List name already exists for this user",
             });
         }
+        console.log("List name is unique")
     
         // Create a new list for the user
         const newList = { 
             listName, 
-            places: [] 
+            placeIds: [] 
         };
         user.lists.push(newList);
+        console.log(`New list is ${user.lists}`)
     
         // Save the updated user
         await user.save();
+
+        console.log("DELETE REQUEST COMPLETED SUCCESSFULLY")
     
         res.status(201).json({
           status: "success",
@@ -55,9 +62,8 @@ exports.getAllLists = async (req, res) => {
         const { username } = req.params;
         console.log(`username is ${username}`);
     
-        // Find the user by username
-        const UserModel = mongoose.model(username, userSchema, username)
-        const user = await UserModel.findOne({username});
+        // Find the lists by username
+        const user = await List.findOne({username});
         console.log("User is: ")
         console.log(user);
     
@@ -74,33 +80,40 @@ exports.getAllLists = async (req, res) => {
 }
 
 // Removes the specified list
-// Requires a username parameter and listId variable from body
+// Requires a username parameter and listName variable from body
 exports.deleteList = async (req, res) => {
     try {
+        console.log("I AM THE DELETE LIST REQUEST")
         const { username } = req.params;
-        const { listId } = req.body
+        const { listName } = req.body
+        console.log(`Username: ${username}`)
+        console.log(`listName: ${listName}`)
 
-        // Find the user by username
-        const UserModel = mongoose.model(username, userSchema, username);
-        const user = await UserModel.findOne({username});
+        // Find the user's lists by username
+        const user = await List.findOne({username});
+        console.log("User is: ")
+        console.log(user)
 
-        if (listId >= user.lists.length || listId < 0) {
+        // Find the index of the element with listName
+        const indexToRemove = user.lists.findIndex(list => list.listName === listName);
+        console.log(`Index to remove is: ${indexToRemove}`)
+
+        if (indexToRemove === -1) {
             return res.status(404).json({
               status: "error",
               message: "List not found",
             });
         }
-
-        // Find the list within the user's lists array
-        const list = user.lists[listId];
+        console.log("List exists")
 
         // Remove the list from the user's lists array
-        list.remove();
-        user.lists.splice(listId, 1);
+        user.lists.splice(indexToRemove, 1);
+        console.log(`New lists are ${user.lists}`)
 
         // Save the updated user
         await user.save();
 
+        console.log("DELETE REQUEST COMPLETED SUCCESSFULLY")
         res.json({
             status: "success",
             message: "List deleted successfully"
@@ -116,25 +129,34 @@ exports.deleteList = async (req, res) => {
 // For lists/listId
 
 // Takes a place as input and adds it to the list
-// Requires a username and listId parameter and placeId variable in body)
+// Requires a username and listName parameter and placeId variable in body)
 exports.addNewPlace = async (req, res) => {
     try {
-        const { username, listId } = req.params;
+        const { username, listName } = req.params;
         const { placeId } = req.body;
+        console.log(`Username: ${username}`)
+        console.log(`List name: ${listName}`)
+        console.log(`PlaceId: ${placeId}`)
 
-        // Find the user by username
-        const UserModel = mongoose.model(username, userSchema, username);
-        const user = await UserModel.findOne({username});
+        // Find the user's lists by username
+        const user = await List.findOne({username});
+        console.log("User is: ")
+        console.log(user)
 
-        if (listId >= user.lists.length || listId < 0) {
+        // Find the index of the element with listName
+        const listIndex = user.lists.findIndex(list => list.listName === listName);
+        console.log(`List index is: ${listIndex}`)
+
+        if (listIndex === -1) {
             return res.status(404).json({
-              status: "error",
-              message: "List not found",
+            status: "error",
+            message: "List not found",
             });
         }
+        console.log("List exists")
 
-        // Find the list within the user's lists array
-        const list = user.lists[listId];
+        const list = user.lists[listIndex]
+        console.log(`List is ${list}`)
 
          // Check if the place already exists in the list
          const existingPlace = list.placeIds.find(place => place === placeId);
@@ -166,25 +188,29 @@ exports.addNewPlace = async (req, res) => {
 
 
 // Returns the specified list
-// Requires a username and listId parameter
+// Requires a username and listName parameter
 exports.getList = async (req, res) => {
     try {
-        const { username, listId } = req.params;
+        const { username, listName } = req.params;
 
-        // Find the user by username
-        const UserModel = mongoose.model(username, userSchema, username);
-        const user = await UserModel.findOne({username});
+        // Find the user's lists by username
+        const user = await List.findOne({username});
 
-        if (listId >= user.lists.length || listId < 0) {
+       // Find the index of the element with listName
+        const listIndex = user.lists.findIndex(list => list.listName === listName);
+        console.log(`List index is: ${listIndex}`)
+
+        if (listIndex === -1) {
             return res.status(404).json({
-              status: "error",
-              message: "List not found",
+            status: "error",
+            message: "List not found",
             });
         }
+        console.log("List exists")
 
         res.json({
             status: "success",
-            data: user.lists[listId]
+            data: user.lists[listIndex]
         });
     } catch (error) {
         res.status(500).json({
@@ -195,28 +221,34 @@ exports.getList = async (req, res) => {
 }
 
 // Takes a name as input and changes the name of the list 
-// Requires a username and listId parameter and listName variable in body)
+// Requires a username and listName parameter and listName variable in body)
 exports.updateListName = async (req, res) => {
     try {
-        const { username, listId } = req.params;
-        const { listName } = req.body;
+        const { username, listName } = req.params;
+        const { newListName } = req.body;
 
-        // Find the user by username
-        const UserModel = mongoose.model(username, userSchema, username);
-        const user = await UserModel.findOne({username});
+        // Find the user's lists by username
+        const user = await List.findOne({username});
 
-        if (listId >= user.lists.length || listId < 0) {
+        // Find the index of the element with listName
+        const listIndex = user.lists.findIndex(list => list.listName === listName);
+        console.log(`List index is: ${listIndex}`)
+
+        if (listIndex === -1) {
             return res.status(404).json({
-              status: "error",
-              message: "List not found",
+            status: "error",
+            message: "List not found",
             });
         }
+        console.log("List exists")
 
         // Find the list within the user's lists array
-        const list = user.lists[listId];
+        const list = user.lists[listIndex];
+        console.log(`List is: ${list}`)
 
         // Update the list name
-        list.listName = listName;
+        list.listName = newListName;
+        console.log(`New list name is: ${list.listName}`)
 
         // Save the updated user
         await user.save();
@@ -234,40 +266,49 @@ exports.updateListName = async (req, res) => {
 }
 
 // Deletes the specified place 
-// Requires a username and listId parameter and placeId in body)
+// Requires a username and listName parameter and placeId in body)
 exports.deleteListPlace = async (req, res) => {
     try {
-        const { username, listId } = req.params;
+        const { username, listName } = req.params;
         const { placeId } = req.body;
         console.log(`Username: ${username}`)
-        console.log(`listId: ${listId}`)
+        console.log(`listName: ${listName}`)
         console.log(`placeId: ${placeId}`)
 
-        // Find the user by username
-        const UserModel = mongoose.model(username, userSchema, username);
-        const user = await UserModel.findOne({username});
+        // Find the user's lists by username
+        const user = await List.findOne({username});
         console.log("User is: ")
         console.log(user);
 
-        if (listId >= user.lists.length || listId < 0) {
-            return res.status(404).json({
-              status: "error",
-              message: "List not found",
-            });
-        }
-        console.log("List exists")
+       // Find the index of the element with listName
+       const listIndex = user.lists.findIndex(list => list.listName === listName);
+       console.log(`List index is: ${listIndex}`)
+
+       if (listIndex === -1) {
+           return res.status(404).json({
+           status: "error",
+           message: "List not found",
+           });
+       }
+       console.log("List exists")
 
         // Find the list within the user's lists array
-        const list = user.lists[listId];
+        const list = user.lists[listIndex];
         console.log(`List is ${list}`)
 
-        // Remove the place from the list
-        const index = list.placeIds.indexOf(placeId);
-        console.log(`Index is: ${index}`)
-        if (index !== -1) {
-            list.placeIds.splice(index, 1);
-            console.log(`New placeIds is: ${list.placeIds}`)
+        // Find the index of the element with listName
+        const placeIndex = list.placeIds.indexOf(placeId);
+
+        if (placeIndex === -1) {
+            return res.status(404).json({
+            status: "error",
+            message: "Place is not in the list",
+            });
         }
+
+        // Remove the place from the list
+        list.placeIds.splice(placeIndex, 1);
+            
 
         // Save the updated user
         await user.save();

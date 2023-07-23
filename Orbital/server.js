@@ -7,7 +7,7 @@ const mongoose = require("mongoose");
 dotenv.config({path: "config.env"})
 
 // Connect to the MongoDB database
-const DB = "mongodb+srv://ianwonghanli:RKQ2912LqecxBrCA@orbitaldb.gxc40tw.mongodb.net/users";
+const DB = "mongodb+srv://ianwonghanli:RKQ2912LqecxBrCA@orbitaldb.gxc40tw.mongodb.net/final";
 
 mongoose.connect(DB, {
     useNewUrlParser: true,

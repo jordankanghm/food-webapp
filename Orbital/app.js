@@ -18,6 +18,9 @@ app.set("views", path.join(__dirname, "views"));
 // Serve static files from the "public" folder
 app.use(express.static(path.join(__dirname, "public")));
 
+// Render the initial EJS file before defining your routers
+app.use("/", renderInitialPage);
+
 // Enables parsing of JSON data in request bodies
 app.use(express.json());
 
@@ -29,8 +32,5 @@ app.use("/:username/lists", listRouter);
 
 // Navigate to searchHistoryRouter whenever the searchHistory route is requested
 app.use("/:username/searchHistory", searchHistoryRouter);
-
-// Render the initial EJS file before defining your routers
-app.use(renderInitialPage);
 
 module.exports = app;

@@ -1,43 +1,9 @@
-//Improvements
-//Created the candidates for event trends and food trends
-
-
-//Require
-//A database to store user's saved lists
-//A database to store food trends
-//A database to store event trends
-//A database to store user's past search history
-
-//Things to work on
-//Find out why marker icons relative paths not working
-//Sharing options (requires secure server)
-//More filter options?
-//Implement Creating, Reading, Editing, Deleting functionalities for the lists
-//Find food trends and food events for database
-
 let map, currentLocation, currentMarker, currentInfoWindow, currentClosableTab;
 let searchRadius = 50000;
 let markers = [];
 
-const fs = require("fs");
-const eventTrends = JSON.parse(fs.readFileSync("../data/eventTrends"));
-const foodTrends = JSON.parse(fs.readFileSync("../data/foodTrends"));
-console.log(eventTrends)
-console.log(foodTrends)
-
-//Replicating saved lists in a database
-let savedList1 = {
-    name: "first list",
-    placeIds: ["ChIJk_idN3oU2jEReqhHxnv3lgI", "ChIJXUuzLyMZ2jERs9wAeqqPlAQ"]
-}
-let savedList2 = {
-    name: "second list",
-    placeIds: []
-}
-let savedLists = [savedList1, savedList2];
-
-//Replicating search history in a database
-let pastSearches = ["chinese", "chinese", "korean", "chinese", "western", "korean"]
+//username of user obtained from somewhere
+const username = "johnny"
 
 /**
  * Initialises the map.
@@ -58,7 +24,7 @@ function initMap() {
     //Add title to welcome user
     const title = document.getElementById("title");
     //Add username from database here
-    title.innerHTML = `Welcome`;
+    title.innerHTML = `Welcome ${username}`;
 
     //Implement sign out button functionality
     const signOutButton = document.getElementById("sign-out-button");
@@ -113,7 +79,8 @@ function initMap() {
     
         // Add 'active' class to the clicked tab
         savedButton.classList.add('active');
-        makeArrayWindow(savedLists, "list")
+        showAllLists();
+        // makeArrayWindow(savedLists, "list")
     })
 
     // Show trending events when event trend button is clicked
@@ -276,6 +243,7 @@ async function showSearchResults(query, purpose, places, viewbound) {
             return distance <= searchRadius;
         }
       }).map(async result => {
+        console.log(result);
         const reviews = await new Promise((resolve, reject) => {
             // Create a new request for place reviews as textSearch() is unable to access place reviews
             const request = {
@@ -367,6 +335,7 @@ function makeArrayWindow(array, purpose) {
            container.appendChild(placeItem);
        }
    } else if (purpose === "list") {
+        console.log("I AM THE MAKE ARRAY WINDOW FUNCTION")
        // Create the button to create new lists
        let createListButton = document.createElement("h4");
        createListButton.innerHTML = "+ Create a new List";
@@ -375,12 +344,44 @@ function makeArrayWindow(array, purpose) {
        createListButton.style.cursor = "pointer";
        container.appendChild(createListButton);
 
-       for (let list of savedLists) {
+       for (let list of array) {
            let listItem = document.createElement("li");
+           let editButton = document.createElement("button");
+           editButton.innerText = "Edit";
+           let deleteButton = document.createElement("button");
+           deleteButton.innerText = "Delete";
            listItem.innerHTML = `
-           <h3>${list.name}</h3>
+           <h3>${list.listName}</h3>
            `
+           // Append the buttons to the list item
+            listItem.appendChild(editButton);
+            listItem.appendChild(deleteButton);
+
            listItem.style.cursor = "pointer";
+           editButton.style.cursor = "pointer";
+           deleteButton.style.cursor = "pointer";
+
+           editButton.addEventListener("click", () => {
+            
+           })
+
+           // Requires a username parameter and listName variable from body
+           deleteButton.addEventListener("click", async () => {
+            console.log(`LIST NAME IS: ${list.listName}`)
+                const request = {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        listName: list.listName
+                    })
+                }
+                
+                const res = await fetch(`/${username}/lists`, request)
+                                    .then(response => response.json())
+                listItem.remove();
+           })
 
            listItem.addEventListener("click", () => showSavedListPlaces(list));
            container.appendChild(listItem);
@@ -620,30 +621,47 @@ function makePlaceInfoWindow(result) {
     return infoWindow;
 }
 
-function createNewList(lists) {
-    // Inquire the list name from the user
-    let form = document.createElement("form")
-    let input = document.createElement("input")
-    input.type = "text";
-    form.innerHTML = `
-        What is the name of this list?
-        ${input.outerHTML}
-    `
-    let name = input.value;
+/**
+ * Creates a tab which can be closed by clicking the "X" button
+ * 
+ * @param {*} elementToAppendTo - The element which the tab should be appended to
+ * @param {*} content - The contents of the tab
+ * @returns The closable tab
+ */
+function createClosableTab(elementToAppendTo, content) {
+    let container = document.createElement("div");
+    let buttonContainer = document.createElement("div");
+    let closeButton = document.createElement("button");
+    closeButton.innerText = "X";
+    buttonContainer.append(closeButton);
+    buttonContainer.style.display = "flex";
+    buttonContainer.style.justifyContent = "end";
 
-    // Create a new list element
-    let newList = document.createElement("li");
-    newList.innerHTML = `
-    <button>New List</button>
-    `;
+    closeButton.addEventListener("click", () => {
+        container.remove();
+        const tabs = document.querySelectorAll(".tabs button");
+        // Remove 'active' class from all tabs
+        tabs.forEach(tab => tab.classList.remove('active'));
+    })
+    container.append(buttonContainer, content);
+    container.style.marginTop = "5px"
+    elementToAppendTo.appendChild(container);
+    // elementToAppendTo.insertAdjacentElement("afterend", container)
+    return container;
+}
 
-    // Append the new list to the current list
-    lists.appendChild(newList);
-    let list = {
-        name,
-        placeIds: []
-    };
-    newList.addEventListener("click", () => showSavedListPlaces(list));
+/**
+ * Shows all saved lists of the user
+ */
+async function showAllLists() {
+    console.log("I AM THE SHOW ALL LISTS FUNCTION")
+    const request = {
+        method: "GET"
+    }
+    console.log(`Fetching saved lists for ${username}`)
+    const res = await fetch(`/${username}/lists`, request)
+                        .then(response => response.json())
+    makeArrayWindow(res.data, "list");
 }
 
 /**
@@ -710,234 +728,6 @@ async function showSavedListPlaces(list) {
             console.error('Error occurred during show list places:', error);
         }
     }  
-}
-
-/**
- * Shows the current trending food events
- * 
- * Current trending events to be retrieved from our database. 
- * Clickable markers shows all information about the event upon click
- */
-async function showEventTrends() {
-    // Removes all current markers
-    removeMarkers(map);
-
-    let counter = 1;
-    const viewbounds = new google.maps.LatLngBounds();
-    // Set the current viewport to include the user's current location
-    viewbounds.extend(currentLocation);
-
-    const promises = eventTrends.map(async result => {
-      const zIndex = counter++;
-  
-      // Create a request object
-      const request = {
-        placeId: result.placeId
-      };
-
-      // Create a Places Service object
-      const service = new google.maps.places.PlacesService(map);
-  
-      return new Promise((resolve, reject) => {
-        //Retrieve required details from place
-        service.getDetails(request, function (place, status) {
-          if (status === google.maps.places.PlacesServiceStatus.OK) {
-            viewbounds.extend(place.geometry.location);
-            resolve({ ...result, ...place, zIndex });
-          } else {
-            reject(new Error(`PlacesServiceStatus: ${status}`));
-          }
-        });
-      });
-    });
-  
-    try {
-        //Wait for all details to be retrieved
-        let results = await Promise.all(promises);
-        results = await setMarkers(map, results, "eventTrend");
-        makeArrayWindow(results, "eventTrend")
-        //Finalise the user's viewport to fit all the places
-        map.fitBounds(viewbounds);
-    } catch (error) {
-      console.error('Error occurred during trending events:', error);
-    }
-}
-
-/**
- * Creates an info window containing the information regarding the trending food event
- * 
- * @param {} result - The place which we require details about
- * @returns The info window containing all the information about the trending food event
- */
-function makeEventTrendInfoWindow(result) {
-    // event name, event duration, location, price range(if available), 
-    // distance away, description, share button
-    const infoWindowContent = `
-        <h3>${result.eventName}</h3>
-        <button>Share</button>
-        <p>Duration: ${result.duration}</p>
-        <p>Address: ${result.formatted_address}</p>
-        <p>Distance: ${(google.maps.geometry.spherical.computeDistanceBetween(currentLocation, result.geometry.location) / 1000).toFixed(1)}km away</p>
-        <p>Price Level: ${result.priceRange}</p>
-        <p>${result.description}</p>
-        <a>${result.website}</a>
-    `;
-
-    const infoWindow = new google.maps.InfoWindow({
-        content: infoWindowContent
-    });
-
-    return infoWindow;
-}
-
-/**
- * Shows the current food trends
- * 
- * Current food trends to be retrieved from our database.
- * Clickable markers shows all information about the the places which sell such food
- * 
- * @param {} index - The food trend of interest currently
- */
-async function showFoodTrendPlaces(foodTrend) {
-    // Remove all existing markers
-    removeMarkers(map)
-
-    let results = showSearchResults(foodTrend.keyword, "search", null, null);
-    results = await setMarkers(map, results, "foodTrend");
-    makeArrayWindow(results, "place")
-}
-
-/**
- * Creates a tab which can be closed by clicking the "X" button
- * 
- * @param {*} elementToAppendTo - The element which the tab should be appended to
- * @param {*} content - The contents of the tab
- * @returns The closable tab
- */
-function createClosableTab(elementToAppendTo, content) {
-    let container = document.createElement("div");
-    let buttonContainer = document.createElement("div");
-    let closeButton = document.createElement("button");
-    closeButton.innerText = "X";
-    buttonContainer.append(closeButton);
-    buttonContainer.style.display = "flex";
-    buttonContainer.style.justifyContent = "end";
-
-    closeButton.addEventListener("click", () => {
-        container.remove();
-        const tabs = document.querySelectorAll(".tabs button");
-        // Remove 'active' class from all tabs
-        tabs.forEach(tab => tab.classList.remove('active'));
-    })
-    container.append(buttonContainer, content);
-    container.style.marginTop = "5px"
-    elementToAppendTo.appendChild(container);
-    // elementToAppendTo.insertAdjacentElement("afterend", container)
-    return container;
-}
-
-/**
- * Takes the user's latest ten searches and returns places related to these searches
- * 
- * Only three searches will be done based on their latest searches.
- * The queries will be chosen from highest recurring word in descending order.
- * If any of the top 3 words only occur once, then the latest user query will be selected instead.
- */
-async function showRecommendations() {
-    // Remove all current markers on the map
-    removeMarkers(map)
-
-    const numSearches = pastSearches.length;
-    let pastTenSearches = "";
-    let counter = 1;
-    for (let i = numSearches - 1; i >= 0; i--) {
-        // Check that the query contains letters
-        if (counter <= 10 && /[a-zA-Z]/.test(pastSearches[i])) {
-            pastTenSearches += pastSearches[i] + " ";
-            counter++;
-        }
-        if (counter > 10) {
-            break;
-        }
-    }
-
-    // Convert the string to lowercase and remove punctuations
-    const normalizedText = pastTenSearches.toLowerCase().replace(/[^\w\s]/g, "");
-    // Separate the words into an array
-    const words = normalizedText.split(" ");
-    // Remove the last element which is an empty space
-    words.pop();
-
-    // Storing word-count pairs
-    const wordFrequencies = new Map();
-
-    for (let i = 0; i < words.length; i++) {
-        let word = words[i];
-        let currentCount;
-
-        // If the table does not contain the word, initialise its count to 1
-        if (!wordFrequencies.has(word)) {
-            wordFrequencies.set(word, 1)
-            currentCount = 1;
-        } else {  // If the table contains the word, increment its count by 1
-            currentCount = wordFrequencies.get(word);
-            currentCount++;
-            wordFrequencies.set(word, currentCount);
-        }
-    };
-
-     // Create an array of [key, value] pairs from the map
-    const pairs = Array.from(wordFrequencies);
-
-    // Sort the pairs in descending order based on frequencies
-    pairs.sort((a, b) => b[1] - a[1]);
-
-    // Get the keys of the top 3 pairs
-    const topThreeKeys = pairs.slice(0, 3).map(pair => pair[0]);
-
-    const firstWord = pairs[0];
-    const secondWord = pairs[1];
-    const thirdWord = pairs[2];
-
-    let viewbound = new google.maps.LatLngBounds();
-    viewbound.extend(currentLocation);
-    let places = [];
-    
-    // If there is no firstWord, show the default search results
-    // If there is no secondWord, show only results for the firstWord
-    if (!firstWord || !secondWord) {
-        showSearchResults(firstWord, "recommendations", null, null);
-    // If there is no thirdWord, show only results for the first and second words
-    } else if (!thirdWord) {
-        let results = await showSearchResults(firstWord, "recommendations", places, viewbound)
-        results = await showSearchResults(secondWord, "recommendations", results.places, results.viewbound)
-        places = results.places;
-        // Finalises the bounds based on all the search results
-        map.fitBounds(results.viewbound);
-    // If all three words are present, show their search results
-    } else {
-        let results = await showSearchResults(firstWord, "recommendations", places, viewbound)
-        results = await showSearchResults(secondWord, "recommendations", results.places, results.viewbound)
-        results = await showSearchResults(thirdWord, "recommendations", results.places, results.viewbound)
-        places = results.places;
-        // Finalises the bounds based on all the search results
-        map.fitBounds(results.viewbound);
-    }
-
-    if (places.length === 0) {
-        let content = document.createElement("p");
-        content.innerHTML =`
-            <h3>No places found<h3>
-        `;
-        let searchBox = document.getElementById("pac-card");
-        currentClosableTab = createClosableTab(searchBox, content);
-    } else {
-        // Call the setMarkers function to display the markers on the map
-        places = await setMarkers(map, places, "recommendations");
-        // Create a window listing the search results
-        makeArrayWindow(places, "place");
-    }
-      
 }
 
 window.initMap = initMap;

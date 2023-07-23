@@ -10,7 +10,7 @@ router
     .delete(listController.deleteList)
 
 router
-    .route("/:listId")
+    .route("/:listName")
     .get(listController.getList)
     .post(listController.addNewPlace)
     .patch(listController.updateListName)

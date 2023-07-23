@@ -1,5 +1,4 @@
-const mongoose = require("mongoose");
-const userSchema = require("../models/userModel");
+const SearchHistory = require("../models/searchHistoryModel");
 
 // Adds a query to the user's array of search history
 // Requires a username parameter and query variable in the body
@@ -7,13 +6,17 @@ exports.createSearchHistory = async (req, res) => {
     try {
         const { username } = req.params;
         const { query } = req.body;
+        console.log(`Username is: ${username}`)
+        console.log(`Query is: ${query}`)
 
-        // Get user by username
-        const UserModel = mongoose.model(username, userSchema, username);
-        const user = await UserModel.findOne({username});
+        // Get user's search history by username
+        const user = await SearchHistory.findOne({username});
+        console.log("User is: ")
+        console.log(user)
 
         // Add to user's search history
         user.searchHistory.push(query);
+        console.log(`New search history is: ${user.searchHistory}`)
 
         // Save changes
         await user.save();
@@ -36,9 +39,12 @@ exports.createSearchHistory = async (req, res) => {
 exports.getSearchHistory = async (req, res) => {
     try {
         const { username } = req.params;
+        console.log(`Username is: ${username}`)
 
-        const UserModel = mongoose.model(username, userSchema, username);
-        const user = await UserModel.findOne({username});
+        // Get user's search history by username
+        const user = await SearchHistory.findOne({username});
+        console.log("User is: ")
+        console.log(user)
 
         res.json({
             status: "success",
