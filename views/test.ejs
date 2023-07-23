@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App</title>
+    <link rel="stylesheet" href="app.css">
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Import Google Maps API -->
+    <meta http-equiv="Content-Security-Policy" content="default-src * self blob: data: gap:; style-src * self 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * self 'unsafe-inline' blob: data: gap:; connect-src self * 'unsafe-inline' blob: data: gap:; frame-src * self blob: data: gap:;">
+    <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDZ1A58jDFON72DVFaaco_Z6dBBA19LHA8&callback=initMap&libraries=places,geometry&v=weekly"
+    defer
+  ></script>
+</head>
+<body>
+  <% if (locals.user) { %>
+
+    <div class="title-bar">  
+      <h3 class="title-bar"> Welcome <%= locals.user.name -%>! </h3>
+      <div class="title-bar to-flex">
+          <form class="form login-form logout">
+              <button type = "submit"> 
+                  LOGOUT
+              </button>
+          </form>
+
+      </div>
+    
+  <% } else { %>
+    <div class="title-bar">  
+      <div class="title-bar to-flex login signup">
+          <form class="login-form" action="/login" method="GET">
+              <button > 
+                  LOGIN
+              </button>
+          </form>
+  
+          <form class="login-form" action="/signup" method="GET">
+              <button > 
+                  SIGN UP
+              </button>
+          </form>
+      </div>
+  <% } %>
+  
+    
+</div>
+  <div class="pac-card" id="pac-card">
+    <h3 id="title">Search Box</h3>
+
+    <div id="filter-container" class="pac-controls">
+      <div class="filter-card">
+        <h4>Cuisine Type</h4>
+        <input id="chinese" class="type" type="checkbox">
+        <label for="chinese">Chinese</label>
+
+        <input id="taiwanese" class="type" type="checkbox">
+        <label for="taiwanese">Taiwanese</label>
+
+        <input id="vietnamese" class="type" type="checkbox">
+        <label for="vietnamese">Vietnamese</label>
+
+        <input id="western" class="type" type="checkbox">
+        <label for="western">Western</label>
+
+        <input id="thai" class="type" type="checkbox">
+        <label for="thai">Thai</label>
+
+        <input id="japanese" class="type" type="checkbox">
+        <label for="japanese">Japanese</label>
+      </div>
+
+      <div class="filter-card">
+        <h4>Price Range</h4>
+        <input id="$" class="price-range" type="checkbox">
+        <label for="$">$</label>
+
+        <input id="$$" class="price-range" type="checkbox">
+        <label for="$$">$$</label>
+
+        <input id="$$$" class="price-range" type="checkbox">
+        <label for="$$$">$$$</label>
+
+        <input id="$$$$" class="price-range" type="checkbox">
+        <label for="$$$$">$$$$</label>
+
+        <input id="$$$$$" class="price-range" type="checkbox">
+        <label for="$$$$$">$$$$$</label>
+      </div>
+
+      <div class="filter-card">
+        <h4>Dietary Restrictions</h4>
+        <input id="gluten-free" class="type" type="checkbox">
+        <label for="gluten-free">Gluten-free</label>
+
+        <input id="vegeatarain" class="type" type="checkbox">
+        <label for="vegetarian">Vegetarian</label>
+
+        <input id="vegan" class="type" type="checkbox">
+        <label for="vegan">Vegan</label>
+      </div>
+
+      <div class="filter-card">
+        <h4>Distance away</h4>
+        <input id="1000" class="distance-away" type="radio" name="distance-away">
+        <label for="1000">1km</label>
+
+        <input id="3000" class="distance-away" type="radio" name="distance-away">
+        <label for="3000">3km</label>
+
+        <input id="5000" class="distance-away" type="radio" name="distance-away">
+        <label for="5000">5km</label>
+
+        <input id="10000" class="distance-away" type="radio" name="distance-away">
+        <label for="10000">10km</label>
+
+        <input id="50000" class="distance-away" type="radio" name="distance-away">
+        <label for="50000">>10km</label>
+      </div>
+    </div>
+    <div>
+      <button id="close-dropdown-button">^</button>
+    </div>  
+    <div id="pac-container">
+        <input id="pac-input" type="text" placeholder="Enter a location" />
+        <button id="search-button">Search</button>
+    </div>
+    <button id="saved-button">Saved</button>
+    <button id="event-trend-button">Event Trends</button>
+    <button id="food-trend-button">Food Trends</button>
+    <button id="recommendations-button">Recommendations</button>
+  </div>
+  <div id="map"></div>
+  <script type = "module" src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="./app.js"> </script>
+  <script src="./logout.js"> </script>
+
+</body>
+</html>
