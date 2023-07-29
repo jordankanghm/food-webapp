@@ -381,18 +381,28 @@ function makeArrayWindow(array, purpose, placeId) {
        for (let place of array) {
            let placeItem = document.createElement("li");
            placeItem.style.margin = "5px 0";
+           let header = document.createElement("h3");
+           header.innerText = `${place.name}`
+           header.style.fontSize = "15px";
+           header.style.marginBottom = "3px";
            if (purpose === "place") {
             placeItem.innerHTML = `
-                <h3>${place.name}</h3>
+                ${header.outerHTML}
+                <div>${place.formatted_address}</div>
                 <hr>
             `;
            }
 
            if (purpose === "listPlace") {
             const header = document.createElement("h3")
+            // placeId here refers to list name
             header.innerText = `${placeId}`
+            header.style.fontSize = "20px";
             container.appendChild(header);
-            placeItem.innerHTML = `<h3>${place.name}</h3>`
+            const placeHeader = document.createElement("h3");
+            placeHeader.innerText = `${place.name}`
+            placeHeader.style.fontSize = "15px";
+            placeItem.appendChild(placeHeader);
             const deleteButton = document.createElement("button");
             deleteButton.innerText = "Delete"
             placeItem.appendChild(deleteButton);
@@ -469,7 +479,9 @@ function makeArrayWindow(array, purpose, placeId) {
            let listItem = document.createElement("li");
            listItem.style.margin = "5px 0"
            let listName = document.createElement("h3");
-           listName.innerText = list.listName
+           listName.innerText = `${list.listName}`
+           listName.style.fontSize = "15px";
+           listName.style.marginBottom = "3px";
            let editButton = document.createElement("button");
            editButton.innerText = "Edit";
            let deleteButton = document.createElement("button");
@@ -552,8 +564,11 @@ function makeArrayWindow(array, purpose, placeId) {
    } else if (purpose === "eventTrend") {
        for (let eventTrend of array) {
            let eventTrendItem = document.createElement("li");
+           let header = document.createElement("h3")
+           header.innerText = `${eventTrend.eventName}`;
+           header.style.fontSize = "15px";
            eventTrendItem.innerHTML = `
-               <h3>${eventTrend.eventName}</h3>
+               ${header.outerHTML}
                <p>${eventTrend.description}</p>
                <hr>
            `;
@@ -567,8 +582,13 @@ function makeArrayWindow(array, purpose, placeId) {
    } else if (purpose === "foodList") {
        for (let foodTrend of array) {
            let foodTrendItem = document.createElement("li");
+           let header = document.createElement("h3");
+           header.innerText = `${foodTrend.foodName}`;
+           header.style.fontSize = "15px";
+           header.style.marginBottom = "3px";
+
            foodTrendItem.innerHTML = `
-                <h3>${foodTrend.foodName}</h3>
+                ${header.outerHTML}
                 ${foodTrend.description}</p>
                 <p>History: ${foodTrend.history}</p>
                 <p>Benefits: ${foodTrend.benefits}</p>
@@ -618,7 +638,7 @@ async function setMarkers(map, array, purpose) {
             icon: "http://maps.google.com/mapfiles/kml/paddle/S.png"
         });
 
-        // let image = {
+        // let icon = {
         //     // This marker is 20 pixels wide by 32 pixels high.
         //     size: new google.maps.Size(20, 32),
         //     // The origin for this image is (0, 0).
@@ -627,15 +647,17 @@ async function setMarkers(map, array, purpose) {
         //     anchor: new google.maps.Point(0, 0),
         // };
 
-        let icon = "";
+        let icon = ""
         // Changing the marker icon depending on the purpose
         if (purpose === "place" || purpose === "foodTrend" || purpose === "recommendations") {
-            icon = "https://maps.google.com/mapfiles/kml/shapes//dining.png"
+            icon = "https://maps.gstatic.com/mapfiles/ms2/micons/restaurant.png"
+            console.log(`Icon url is ${icon.url}`)
         } else if (purpose === "eventTrend") {
-           icon = "http://maps.google.com/mapfiles/kml/paddle/grn-stars.png"
+           icon = "https://maps.gstatic.com/mapfiles/ms2/micons/green-dot.png"
+           console.log(`Icon url is ${icon.url}`)
         }
         console.log("Image is: ")
-        console.log(icon)
+        console.log(icon.url)
         // iconBase += image.url
         marker.setIcon(icon);
         
@@ -651,7 +673,7 @@ async function setMarkers(map, array, purpose) {
                 console.log(`Old marker icon url is set back to: ${currentMarker.icon.url}`)
             }
 
-            const chosenIcon = "http://maps.google.com/mapfiles/kml/paddle/red-circle.png"
+            const chosenIcon = "https://maps.gstatic.com/mapfiles/ms2/micons/red-pushpin.png"
 
             console.log("Chosen Image is: ")
             console.log(chosenIcon)
@@ -746,10 +768,13 @@ function makePlaceInfoWindow(result) {
     console.log("Got all info")
     // console.log(addToListButton.outerHTML)
 
+    let header = document.createElement("h3");
+    header.innerText = `${result.name}`
+    header.style.marginBottom = "3px";
+
     //The content to be displayed in the info window
     const infoWindowContent = `
-        <h3>${result.name}</h3>
-        <button id="share-button">Share</button>
+        ${header.outerHTML}
         <button id="add-to-list-button">+ Add To List</button>
         <p>Address: ${result.formatted_address}</p>
         ${phoneNumber}
@@ -767,23 +792,23 @@ function makePlaceInfoWindow(result) {
     });
 
     google.maps.event.addListenerOnce(infoWindow, "domready", () => {
-        const shareButton = document.getElementById("share-button");
-        shareButton.addEventListener("click", () => {
-            console.log("SHARE BUTTON WORKING")
-                // Check if the Web Share API is supported by the browser
-            if (navigator.share) {
-                navigator.share({
-                title: "Place Title",
-                text: "Check out this amazing place!",
-                url: "https://example.com/place"
-                })
-                .then(() => console.log("Place shared successfully."))
-                .catch((error) => console.log("Error sharing place:", error));
-            } else {
-                console.log("Web Share API is not supported in this browser.");
-                // Provide an alternative sharing method or display an error message
-            }
-        });
+        // const shareButton = document.getElementById("share-button");
+        // shareButton.addEventListener("click", () => {
+        //     console.log("SHARE BUTTON WORKING")
+        //         // Check if the Web Share API is supported by the browser
+        //     if (navigator.share) {
+        //         navigator.share({
+        //         title: "Place Title",
+        //         text: "Check out this amazing place!",
+        //         url: "https://example.com/place"
+        //         })
+        //         .then(() => console.log("Place shared successfully."))
+        //         .catch((error) => console.log("Error sharing place:", error));
+        //     } else {
+        //         console.log("Web Share API is not supported in this browser.");
+        //         // Provide an alternative sharing method or display an error message
+        //     }
+        // });
 
         const addToListButton = document.getElementById("add-to-list-button");
         addToListButton.addEventListener("click", async () => {
@@ -996,7 +1021,6 @@ function makeEventTrendInfoWindow(result) {
     // distance away, description, share button
     const infoWindowContent = `
         <h3>${result.eventName}</h3>
-        <button>Share</button>
         <p>Duration: ${result.duration}</p>
         <p>Address: ${result.formatted_address}</p>
         <p>Distance: ${(google.maps.geometry.spherical.computeDistanceBetween(currentLocation, result.geometry.location) / 1000).toFixed(1)}km away</p>

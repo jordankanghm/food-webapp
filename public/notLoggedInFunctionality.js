@@ -269,22 +269,26 @@ function makeArrayWindow(array, purpose, placeId) {
    container.style.overflow = "auto";
    container.innerHTML = "";
 
-   if (purpose === "place") {
-       for (let place of array) {
-           let placeItem = document.createElement("li");
-            placeItem.innerHTML = `
-                <h3>${place.name}</h3>
-                <hr>
-            `;
-           placeItem.style.cursor = "pointer";
+    for (let place of array) {
+        let placeItem = document.createElement("li");
+        placeItem.style.margin = "5px 0";
+        let header = document.createElement("h3");
+        header.innerText = `${place.name}`
+        header.style.fontSize = "15px";
+        header.style.marginBottom = "3px";
+         placeItem.innerHTML = `
+             ${header.outerHTML}
+             <div>${place.formatted_address}</div>
+             <hr>
+         `;
+        placeItem.style.cursor = "pointer";
 
-           //Add an event listener which opens the information window of the place upon clicking
-           placeItem.addEventListener("click", event => {
-            event.stopPropagation();
-            google.maps.event.trigger(place.marker, "click");
-           });
-           container.appendChild(placeItem);
-       }
+        //Add an event listener which opens the information window of the place upon clicking
+        placeItem.addEventListener("click", event => {
+        event.stopPropagation();
+        google.maps.event.trigger(place.marker, "click");
+        });
+        container.appendChild(placeItem);  
    }
    let searchContainer = document.getElementById("pac-card");
    currentClosableTab = createClosableTab(searchContainer, container);;
@@ -321,15 +325,17 @@ async function setMarkers(map, array, purpose) {
             zIndex: result.zIndex,
         });
 
-        let icon = "";
+        let icon = ""
         // Changing the marker icon depending on the purpose
         if (purpose === "place" || purpose === "foodTrend" || purpose === "recommendations") {
-            icon = "https://maps.google.com/mapfiles/kml/shapes//dining.png"
+            icon = "https://maps.gstatic.com/mapfiles/ms2/micons/restaurant.png"
+            console.log(`Icon url is ${icon.url}`)
         } else if (purpose === "eventTrend") {
-           icon = "http://maps.google.com/mapfiles/kml/paddle/grn-stars.png"
+           icon = "https://maps.gstatic.com/mapfiles/ms2/micons/green-dot.png"
+           console.log(`Icon url is ${icon.url}`)
         }
         console.log("Image is: ")
-        console.log(icon)
+        console.log(icon.url)
         // iconBase += image.url
         marker.setIcon(icon);
         
@@ -345,7 +351,7 @@ async function setMarkers(map, array, purpose) {
                 console.log(`Old marker icon url is set back to: ${currentMarker.icon.url}`)
             }
 
-            const chosenIcon = "http://maps.google.com/mapfiles/kml/paddle/red-circle.png"
+            const chosenIcon = "https://maps.gstatic.com/mapfiles/ms2/micons/red-pushpin.png"
 
             console.log("Chosen Image is: ")
             console.log(chosenIcon)
@@ -440,11 +446,12 @@ function makePlaceInfoWindow(result) {
     console.log("Got all info")
     // console.log(addToListButton.outerHTML)
 
+    let header = document.createElement("h3");
+    header.innerText = `${result.name}`
+    header.style.marginBottom = "3px";
     //The content to be displayed in the info window
     const infoWindowContent = `
-        <h3>${result.name}</h3>
-        <button id="share-button">Share</button>
-        <button id="add-to-list-button">+ Add To List</button>
+        ${header.outerHTML}
         <p>Address: ${result.formatted_address}</p>
         ${phoneNumber}
         <p>Distance: ${(google.maps.geometry.spherical.computeDistanceBetween(currentLocation, result.geometry.location) / 1000).toFixed(1)}km away</p>
@@ -460,25 +467,25 @@ function makePlaceInfoWindow(result) {
         content: infoWindowContent
     });
 
-    google.maps.event.addListenerOnce(infoWindow, "domready", () => {
-        const shareButton = document.getElementById("share-button");
-        shareButton.addEventListener("click", () => {
-            console.log("SHARE BUTTON WORKING")
-                // Check if the Web Share API is supported by the browser
-            if (navigator.share) {
-                navigator.share({
-                title: "Place Title",
-                text: "Check out this amazing place!",
-                url: "https://example.com/place"
-                })
-                .then(() => console.log("Place shared successfully."))
-                .catch((error) => console.log("Error sharing place:", error));
-            } else {
-                console.log("Web Share API is not supported in this browser.");
-                // Provide an alternative sharing method or display an error message
-            }
-        });
-    });
+    // google.maps.event.addListenerOnce(infoWindow, "domready", () => {
+    //     const shareButton = document.getElementById("share-button");
+    //     shareButton.addEventListener("click", () => {
+    //         console.log("SHARE BUTTON WORKING")
+    //             // Check if the Web Share API is supported by the browser
+    //         if (navigator.share) {
+    //             navigator.share({
+    //             title: "Place Title",
+    //             text: "Check out this amazing place!",
+    //             url: "https://example.com/place"
+    //             })
+    //             .then(() => console.log("Place shared successfully."))
+    //             .catch((error) => console.log("Error sharing place:", error));
+    //         } else {
+    //             console.log("Web Share API is not supported in this browser.");
+    //             // Provide an alternative sharing method or display an error message
+    //         }
+    //     });
+    // });
 
      // Append the addToListButton to the info window before opening it
     //  const div = document.createElement('div');
